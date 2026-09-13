@@ -28,8 +28,15 @@ function SceneView({ scene, cut, filmKey }: { scene: Scene; cut: Cut; filmKey: s
   let base: React.ReactNode;
 
   if (cardImage && scene.card) {
-    const zoom = interpolate(frame, [0, Math.max(durationInFrames, 1)], [1, 1.05], { extrapolateRight: "clamp" });
-    base = <AbsoluteFill style={{ background: "radial-gradient(circle at 50% 35%,#4e211e 0,#211715 55%,#120e0d 100%)", alignItems: "center", justifyContent: "center", overflow: "hidden" }}><Img src={staticFile(vertical && scene.card.verticalImage ? scene.card.verticalImage : cardImage)} style={{ width: vertical ? scene.card.verticalWidth : scene.card.width, height: "auto", transform: `scale(${zoom})`, borderRadius: 30, boxShadow: "0 30px 90px rgba(0,0,0,.55)" }} />{scene.label ? <div style={{ position: "absolute", left: vertical ? 80 : 100, right: vertical ? 80 : 100, top: vertical ? 290 : 60, color: INK, background: OXBLOOD, border: `1px solid ${GOLD}`, padding: "16px 22px", fontSize: vertical ? 35 : 27, textAlign: "center", borderRadius: 12 }}>{scene.label}</div> : null}</AbsoluteFill>;
+    const zoom = interpolate(frame, [0, Math.max(durationInFrames, 1)], [scene.zoomFrom ?? 1, scene.zoomTo ?? 1.05], { extrapolateRight: "clamp" });
+    const cardWidth = vertical ? scene.card.verticalWidth : scene.card.width;
+    const cardStyle: React.CSSProperties = { width: cardWidth, height: "auto", borderRadius: 30, boxShadow: "0 30px 90px rgba(0,0,0,.55)", display: "block" };
+    // Optional lead still drawn in the very same card, so a dissolve only changes the pixels that differ.
+    const leadInCard = scene.leadImage && scene.leadInCard && (!scene.leadImageVerticalOnly || vertical);
+    const leadFramesInCard = Math.max(Math.round((scene.leadImageSeconds ?? 2) * fps), CROSSFADE_FRAMES + 1);
+    const leadOpacity = leadInCard ? interpolate(frame, [leadFramesInCard - CROSSFADE_FRAMES, leadFramesInCard], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" }) : 0;
+    base = <AbsoluteFill style={{ background: "radial-gradient(circle at 50% 35%,#4e211e 0,#211715 55%,#120e0d 100%)", alignItems: "center", justifyContent: "center", overflow: "hidden" }}><div style={{ position: "relative", width: cardWidth, transform: `scale(${zoom})` }}><Img src={staticFile(vertical && scene.card.verticalImage ? scene.card.verticalImage : cardImage)} style={cardStyle} />{leadInCard ? <Img src={staticFile(scene.leadImage!)} style={{ ...cardStyle, position: "absolute", inset: 0, opacity: leadOpacity }} /> : null}</div>{scene.label ? <div style={{ position: "absolute", left: vertical ? 80 : 100, right: vertical ? 80 : 100, top: vertical ? 290 : 60, color: INK, background: OXBLOOD, border: `1px solid ${GOLD}`, padding: "16px 22px", fontSize: vertical ? 35 : 27, textAlign: "center", borderRadius: 12 }}>{scene.label}</div> : null}</AbsoluteFill>;
+    if (leadInCard) return base;
   } else {
     const usePortrait = vertical && Boolean(scene.portraitFile);
     const file = usePortrait ? scene.portraitFile : scene.file;
