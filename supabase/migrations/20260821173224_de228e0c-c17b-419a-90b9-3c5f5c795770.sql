@@ -1,0 +1,1 @@
+DELETE FROM public.event_bring_claims WHERE name = 'Dialog Tester';

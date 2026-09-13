@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.has_event_addon(uuid, text, text) FROM anon;

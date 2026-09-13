@@ -1,0 +1,1 @@
+update public.events set data = data || jsonb_build_object('shirtPricingEnabled', true, 'shirtPriceAdult', 25, 'shirtPriceYouth', 15, 'extraShirtsEnabled', true, 'maxExtraShirtsPerRsvp', 10) where id = '4850qixo';

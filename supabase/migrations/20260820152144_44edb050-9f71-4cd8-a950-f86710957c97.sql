@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.branded_slug_available(text, text) FROM anon;

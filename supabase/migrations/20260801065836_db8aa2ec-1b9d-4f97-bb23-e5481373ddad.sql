@@ -1,0 +1,1 @@
+DELETE FROM public.suppressed_emails WHERE email = 'demo@thekenroecollective.com';

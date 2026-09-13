@@ -1,0 +1,1 @@
+update public.events set data = data || jsonb_build_object('rsvpDeadline','2026-12-31T23:59:00.000Z') where id='4850qixo';

@@ -1,0 +1,26 @@
+# The Kenroe Collective
+
+> The art of gathering, refined — an editorial platform for invitations, RSVPs, vendors, venues, menus, and group greeting cards.
+
+The Kenroe Collective is a holding company for refined, useful ventures: Events & Gatherings (invitations, RSVP tracking, gift registries, contribution collection, AI invite art, print-at-home thank-you cards), Group eCards (group greeting cards signed by everyone), The Workroom (project boards), and Application Kit (an AI job-search companion).
+
+## Pages
+- [Home](/): The Kenroe Collective umbrella hub — a holding company listing every venture.
+- [Events & Gatherings](/gatherings): The events product homepage — invitations, RSVPs, vendors, and design.
+- [Group eCards](/ecards): Group greeting cards — one card, one link, everyone signs it.
+- [The Workroom](/workroom): Project boards, tasks, and collaborators.
+- [Atelier Studio](/studio): Compose & Design bundle — AI menus/packages plus designer-grade templates.
+- [Pricing](/pricing): Plans, add-ons, and promo-code support.
+- [How it works](/tutorials): Step-by-step guides, including Group eCards.
+- [FAQ](/faq): Plain-English answers, including a Group eCards section.
+- [What's new](/whats-new): Changelog of new features.
+- [Contact](/contact): Reach our support team.
+- [Terms & Conditions](/terms): Terms of service.
+- [Privacy Policy](/privacy): How we handle data.
+
+## Group eCards (Venture 04)
+- One digital greeting card that a whole group signs together: one card, one link, unlimited contributors.
+- Contributors need no sign-up. Each adds a message plus an optional GIF, photo, short video, or voice note, with an AI "help me write" helper.
+- Messages stay hidden until the organizer's chosen reveal date, then the card is emailed to the recipient with a cinematic montage playback (optional music) and a permanent keepsake page.
+- 17 themes across occasion packs. The organizer can moderate, edit, duplicate, and delete their card.
+- Pricing: $3.99 per card in USD. Free to create and collect messages, pay only when you send. Per card, not a subscription.

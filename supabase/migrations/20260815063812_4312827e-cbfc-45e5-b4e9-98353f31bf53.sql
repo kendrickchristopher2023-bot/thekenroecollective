@@ -1,0 +1,1 @@
+update public.vendors set status = 'verified', verified_at = now() where slug = 'kenroe-qa-vendor-34yj';

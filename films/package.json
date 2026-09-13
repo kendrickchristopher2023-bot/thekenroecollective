@@ -1,0 +1,23 @@
+{
+  "name": "kenroe-films",
+  "private": true,
+  "description": "Homepage collection films. Standalone Remotion project, never imported by the app.",
+  "type": "module",
+  "scripts": {
+    "render": "remotion render src/index.ts"
+  },
+  "dependencies": {
+    "@remotion/bundler": "4",
+    "@remotion/cli": "4",
+    "@remotion/compositor-linux-x64-musl": "4",
+    "@remotion/google-fonts": "4",
+    "@remotion/media-utils": "4",
+    "@remotion/renderer": "4",
+    "@remotion/transitions": "4",
+    "@types/react": "^19.3.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "remotion": "4",
+    "typescript": "^7.0.2"
+  }
+}

@@ -1,0 +1,1 @@
+update public.ecards set reveal_date = now() - interval '1 hour' where public_slug = '7dr8g6wqzqv5r4td'

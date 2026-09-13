@@ -1,0 +1,1 @@
+ALTER TABLE public.ecards ADD COLUMN IF NOT EXISTS reminder_sent_at TIMESTAMP WITH TIME ZONE;

@@ -1,0 +1,1 @@
+update public.ecards set reveal_date = '2026-08-15 09:00:00+00' where public_slug = '7dr8g6wqzqv5r4td'
