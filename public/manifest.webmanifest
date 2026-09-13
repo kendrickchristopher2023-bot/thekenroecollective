@@ -1,0 +1,12 @@
+{
+  "name": "The Kenroe Collective",
+  "short_name": "Kenroe",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FAF8F3",
+  "theme_color": "#1A1A1A",
+  "description": "The art of gathering, refined.",
+  "icons": [
+    { "src": "/favicon.svg", "type": "image/svg+xml", "sizes": "any", "purpose": "any" }
+  ]
+}

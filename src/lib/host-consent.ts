@@ -1,0 +1,2 @@
+export const HOST_GUEST_CONSENT_TEXT =
+  "I confirm that each guest has given me permission to receive event-related SMS and other event communications sent through The Kenroe Collective, and that I have the right to share their contact information for this purpose.";

@@ -1,0 +1,1 @@
+delete from public.user_roles where user_id = '9859d19a-1707-417e-8d3d-532df7aa3f76';

@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://thekenroecollective.com/sitemap.xml

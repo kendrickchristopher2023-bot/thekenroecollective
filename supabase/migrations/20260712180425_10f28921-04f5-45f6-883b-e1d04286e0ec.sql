@@ -1,0 +1,1 @@
+ALTER VIEW public.active_ad_placements SET (security_invoker = on);
