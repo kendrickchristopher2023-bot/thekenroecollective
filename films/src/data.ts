@@ -29,8 +29,9 @@ export const FILMS: Record<FilmKey, FilmData> = {
   workroom: {
     key:"workroom", title:"The Workroom", duration:timelineJson.filmDurations.w, bed:"bed-workroom.mp3", lines:lines("w"),
     scenes:[
-      {lineId:"w01",file:"f2-board.webm",from:2.85,rate:0.82,crop:{horizontal:{x:50,y:74,scale:1.5}},verticalCardImage:"footage/w-cols-before.jpg",card:{width:0,verticalWidth:1000}},
-      {lineId:"w02",file:"f2-board.webm",from:8.65,crop:{horizontal:{x:50,y:100,scale:1.5}},leadImage:"footage/w-cols-before.jpg",leadImageSeconds:1,leadImageVerticalOnly:true,verticalCardImage:"footage/w-cols-after.jpg",card:{width:1500,verticalWidth:1000}},
+      // Wide: one continuous board shot. w01 plays the settled board slowly from 6.2 s so that w02 picks up at exactly 8.65 s with the same framing, and the florist card moves about a second into line 2.
+      {lineId:"w01",file:"f2-board.webm",from:6.2,rate:0.3743,crop:{horizontal:{x:50,y:100,scale:1.35}},verticalCardImage:"footage/w-cols-before.jpg",card:{width:0,verticalWidth:1000},zoomFrom:1,zoomTo:1.03},
+      {lineId:"w02",file:"f2-board.webm",from:8.65,crop:{horizontal:{x:50,y:100,scale:1.35}},leadImage:"footage/w-cols-before.jpg",leadInCard:true,leadImageSeconds:1.3,leadImageVerticalOnly:true,verticalCardImage:"footage/w-cols-after.jpg",card:{width:0,verticalWidth:1000},zoomFrom:1.03,zoomTo:1.06},
 
       {lineId:"w03",image:"footage/w-task.png",card:{width:470,verticalWidth:800}},
       {lineId:"w04",image:"footage/w-members.png",card:{width:700,verticalWidth:940}},
