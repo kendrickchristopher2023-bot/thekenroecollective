@@ -58,7 +58,8 @@ function SceneView({ scene, cut, filmKey }: { scene: Scene; cut: Cut; filmKey: s
 
 const voiceVolume = (frame: number, durationFrames: number, fps: number) => {
   const fadeIn = Math.max(1, Math.round(0.04 * fps));
-  const fadeOut = Math.max(1, Math.round(0.15 * fps));
+  // Lines are cut at true silence, so the release only ever sits in the tail silence and never clips a word.
+  const fadeOut = Math.max(1, Math.round(0.08 * fps));
   const attack = interpolate(frame, [0, fadeIn], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   const release = interpolate(frame, [Math.max(fadeIn, durationFrames - fadeOut), durationFrames], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   return Math.min(attack, release);
