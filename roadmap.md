@@ -194,3 +194,10 @@ demo owners excluded from eCard crons, error alerts, and owner report counts.
 - [x] Finish missed US English wording and persist the Workroom demo board corrections through reset.
 - [ ] Workroom v3: restore approved w03 to w05 shots, show the w02 drag, restore readable upright board framing, create clean v3 posters, audit every line start/midpoint, upload v3 without changing homepage config or deleting v1/v2.
 - [ ] Workroom demo reset: wording-update errors must log and continue.
+
+## Storage listing privacy, approved 13 Sep
+- [ ] Confirm no browser-side SELECT-dependent calls for event-photos or ecard-media.
+- [ ] Drop broad SELECT policies for event-photos, ecard-media, and site-films in an applied migration.
+- [ ] Verify anonymous bucket listing is blocked while known public object URLs still load.
+- [ ] Exercise demo-only wall photo upload/delete and eCard photo/voice uploads, then remove all test files and rows.
+- [ ] Confirm storage mirror and nightly backup still use privileged access.
