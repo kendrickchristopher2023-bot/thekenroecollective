@@ -11,5 +11,5 @@ const configs: Array<{ key: FilmKey; cut: Cut }> = [
 
 export const RemotionRoot = () => <>{configs.map(({ key, cut }) => {
   const film = FILMS[key];
-  return <Composition key={`${key}-${cut}`} id={`${key}-${cut}`} component={Film} durationInFrames={Math.ceil(film.duration * 30)} fps={30} width={cut === "horizontal" ? 1920 : 1080} height={cut === "horizontal" ? 1080 : 1920} defaultProps={{ film, cut }} />;
+  return <React.Fragment key={`${key}-${cut}`}><Composition id={`${key}-${cut}`} component={Film} durationInFrames={Math.ceil(film.duration * 30)} fps={30} width={cut === "horizontal" ? 1920 : 1080} height={cut === "horizontal" ? 1080 : 1920} defaultProps={{ film, cut }} />{key === "workroom" ? <Composition id={`${key}-${cut}-poster`} component={Film} durationInFrames={Math.ceil(film.duration * 30)} fps={30} width={cut === "horizontal" ? 1920 : 1080} height={cut === "horizontal" ? 1080 : 1920} defaultProps={{ film, cut, hideCaptions: true }} /> : null}</React.Fragment>;
 })}</>;
