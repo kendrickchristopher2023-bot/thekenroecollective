@@ -32,9 +32,10 @@ export const FILMS: Record<FilmKey, FilmData> = {
       {lineId:"w01",file:"f2-board.webm",from:2.85,rate:0.82,crop:{horizontal:{x:50,y:74,scale:1.5}},verticalCardImage:"footage/w-cols-before.jpg",card:{width:0,verticalWidth:1000}},
       {lineId:"w02",file:"f2-board.webm",from:8.65,crop:{horizontal:{x:50,y:100,scale:1.5}},leadImage:"footage/w-cols-before.jpg",leadImageSeconds:1,leadImageVerticalOnly:true,verticalCardImage:"footage/w-cols-after.jpg",card:{width:1500,verticalWidth:1000}},
 
-      {lineId:"w03",image:"footage/w-task.png",card:{width:640,verticalWidth:900}},
-      {lineId:"w04",image:"footage/w-members.png",card:{width:760,verticalWidth:940}},
-      {lineId:"w05",image:"footage/w-live.png",card:{width:1560,verticalWidth:1000,verticalImage:"footage/w-live-v.png"}},
+      {lineId:"w03",image:"footage/w-task.png",card:{width:470,verticalWidth:800}},
+      {lineId:"w04",image:"footage/w-members.png",card:{width:700,verticalWidth:940}},
+      {lineId:"w05",image:"footage/w-live.png",card:{width:1560,verticalWidth:1040}},
+
 
       {lineId:"w06"},
     ], actions:["Plan the work","Move it forward"],
