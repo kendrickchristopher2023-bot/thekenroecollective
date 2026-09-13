@@ -46,9 +46,9 @@ const film = (
 });
 
 export const SITE_FILMS: SiteFilm[] = [
-  film("celebrations", "Celebrations", "Celebrations", "0:42", 42),
-  film("workroom", "The Workroom", "The Workroom", "0:27", 27, { version: "v4" }),
-  film("application-kit", "Career", "Application Kit", "0:39", 39, { horizontalPosterVersion: "v2" }),
+  film("celebrations", "Celebrations", "Celebrations", "0:56", 56, { version: "v3" }),
+  film("workroom", "The Workroom", "The Workroom", "0:31", 31, { version: "v6" }),
+  film("application-kit", "Career", "Application Kit", "0:48", 48, { version: "v4" }),
 ];
 
 export function filmForCategory(category: string): SiteFilm | undefined {
