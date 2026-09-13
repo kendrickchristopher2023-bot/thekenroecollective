@@ -339,7 +339,7 @@ export async function resetDemoData(): Promise<{
   const workroomCopyError =
     projectCopyError ?? storefrontTaskError ?? boardCopyError ?? logoCopyError;
   if (workroomCopyError) {
-    return { ok: false, reason: workroomCopyError.message };
+    console.error("[demo-reset] Workroom copy update failed; continuing reset", workroomCopyError);
   }
 
   // Anything an owner deliberately deleted is tombstoned and stays deleted.

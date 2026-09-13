@@ -31,7 +31,7 @@ export const FILMS: Record<FilmKey, FilmData> = {
     key:"workroom", title:"The Workroom", duration:timelineJson.filmDurations.w, bed:"bed-workroom.mp3", lines:lines("w"),
     scenes:[
       {lineId:"w01",file:"f2-board.webm",from:10.5,crop:{horizontal:{x:50,y:74,scale:1.5}},verticalCardImage:"footage/w-cols-before.png",card:{width:0,verticalWidth:1000}},
-      {lineId:"w02",file:"f2-board.webm",from:17.5,crop:{horizontal:{x:50,y:100,scale:1.5}},verticalCardImage:"footage/w-cols-after.png",card:{width:0,verticalWidth:1000}},
+      {lineId:"w02",file:"f2-board.webm",from:15.22,crop:{horizontal:{x:50,y:100,scale:1.5}},verticalCardImage:"footage/w-cols-after.png",card:{width:0,verticalWidth:1000}},
 
       {lineId:"w03",image:"footage/w-task.png",card:{width:640,verticalWidth:900}},
       {lineId:"w04",image:"footage/w-members.png",card:{width:760,verticalWidth:940}},
