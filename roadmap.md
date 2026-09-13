@@ -201,3 +201,11 @@ demo owners excluded from eCard crons, error alerts, and owner report counts.
 - [ ] Verify anonymous bucket listing is blocked while known public object URLs still load.
 - [ ] Exercise demo-only wall photo upload/delete and eCard photo/voice uploads, then remove all test files and rows.
 - [ ] Confirm storage mirror and nightly backup still use privileged access.
+
+## Workroom film v3, after storage privacy
+- [ ] Keep the approved horizontal v2 film bytes unchanged and upload them under the horizontal v3 name.
+- [ ] Rebuild upright w01/w02 stills with both columns complete and a true post-drop state, then render and audit the upright v3 cut.
+- [ ] Render captionless clean-board v3 posters from the composition, not decoded MP4 frames.
+- [ ] Upload four new site-films v3 files with correct types and one-year cache, without overwriting v1/v2 or changing homepage v1 config.
+- [ ] Update Brand Kit Workroom films and sheets to v3, retaining v1 copies.
+- [ ] Inspect both cuts at every line start and midpoint plus both full posters, then report sizes and times checked.
