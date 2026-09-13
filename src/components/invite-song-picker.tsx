@@ -52,21 +52,12 @@ export function InviteSongPicker({
     setBusyId(piece.id);
     const toastId = toast.loading("Switching the song");
     try {
-      // Signed links expire, so always take a fresh one before copying.
-      const fresh = (
-        (await getPieceAudioUrl({ data: { id: piece.id } } as never)) as { url: string | null }
+      // The copy into public invitation storage happens server-side, so no
+      // audio travels up from this browser.
+      const publicUrl = (
+        (await publishPieceForInvite({ data: { id: piece.id } } as never)) as { url: string }
       ).url;
-      if (!fresh) throw new Error("That song could not be read.");
-      const res = await fetch(fresh);
-      if (!res.ok) throw new Error("That song could not be read.");
-      const blob = await res.blob();
-      const stem = piece.title.replace(/[^\w\s-]/g, "").trim() || "kenroe-song";
-      const file = new File([blob], `${stem}.mp3`, { type: blob.type || "audio/mpeg" });
-      const publicUrl = await uploadMediaFile(file, {
-        source: "invite",
-        filename: `${stem}.mp3`,
-      });
-      updateEvent(eventId, { songUrl: publicUrl, songTitle: piece.title });
+      updateEvent(eventId, { songUrl: publicUrl, songTitle: piece.title, songAllowDownload: true });
       toast.success(`"${piece.title}" is now the invitation song`, { id: toastId });
       setOpen(false);
     } catch (e) {
