@@ -6535,7 +6535,7 @@ function SongField({ eventId, event }: { eventId: string; event: KEvent }) {
 
   return (
     <div className="sm:col-span-2">
-      <Field label="Invitation song (upload from your computer)">
+      <Field label="Invitation song">
         <div className="space-y-3">
           <input
             ref={inputRef}
