@@ -209,3 +209,9 @@ demo owners excluded from eCard crons, error alerts, and owner report counts.
 - [ ] Upload four new site-films v3 files with correct types and one-year cache, without overwriting v1/v2 or changing homepage v1 config.
 - [ ] Update Brand Kit Workroom films and sheets to v3, retaining v1 copies.
 - [ ] Inspect both cuts at every line start and midpoint plus both full posters, then report sizes and times checked.
+
+## Brand film rebuild, 13 Sep
+- [ ] Celebrations line 3: use Christopher's exact approved wording over “Now playing: The Long Table.”
+- [ ] Regenerate Celebrations as one continuous narration take, then update line clips, captions, and timing.
+- [ ] Render and audit both Celebrations v2 cuts and captionless posters, then upload new versioned files without publishing or changing homepage/Brand Kit.
+- [ ] Continue Workroom v5 and Application Kit v3 only after Celebrations delivery, preserving all previously approved constraints.
