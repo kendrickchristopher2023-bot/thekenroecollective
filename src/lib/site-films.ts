@@ -32,23 +32,23 @@ const film = (
   title: string,
   durationLabel: string,
   durationSeconds: number,
-  horizontalPosterVersion = "v1",
+  { version = "v1", horizontalPosterVersion }: { version?: string; horizontalPosterVersion?: string } = {},
 ): SiteFilm => ({
   key,
   category,
   title,
-  horizontal: `${SITE_FILMS_BASE}/${key}-horizontal-v1.mp4`,
-  vertical: `${SITE_FILMS_BASE}/${key}-vertical-v1.mp4`,
-  posterHorizontal: `${SITE_FILMS_BASE}/${key}-horizontal-${horizontalPosterVersion}.jpg`,
-  posterVertical: `${SITE_FILMS_BASE}/${key}-vertical-v1.jpg`,
+  horizontal: `${SITE_FILMS_BASE}/${key}-horizontal-${version}.mp4`,
+  vertical: `${SITE_FILMS_BASE}/${key}-vertical-${version}.mp4`,
+  posterHorizontal: `${SITE_FILMS_BASE}/${key}-horizontal-${horizontalPosterVersion ?? version}.jpg`,
+  posterVertical: `${SITE_FILMS_BASE}/${key}-vertical-${version}.jpg`,
   durationLabel,
   durationSeconds,
 });
 
 export const SITE_FILMS: SiteFilm[] = [
   film("celebrations", "Celebrations", "Celebrations", "0:42", 42),
-  film("workroom", "The Workroom", "The Workroom", "0:27", 27),
-  film("application-kit", "Career", "Application Kit", "0:39", 39, "v2"),
+  film("workroom", "The Workroom", "The Workroom", "0:27", 27, { version: "v4" }),
+  film("application-kit", "Career", "Application Kit", "0:39", 39, { horizontalPosterVersion: "v2" }),
 ];
 
 export function filmForCategory(category: string): SiteFilm | undefined {
