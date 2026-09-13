@@ -44,9 +44,9 @@ export const FILMS: Record<FilmKey, FilmData> = {
   "application-kit": {
     key:"application-kit", title:"Application Kit", status:"Invite-only", duration:timelineJson.filmDurations.a, bed:"bed-application-kit.mp3", lines:lines("a"),
     scenes:[
-      {lineId:"a01",file:"tailor_1920.mp4",portraitFile:"tailor_430.mp4",from:15,crop:{horizontal:{x:50,y:40,scale:1.65},vertical:{x:50,y:50,scale:1}}},
+      {lineId:"a01",file:"tailor_1920.mp4",portraitFile:"tailor_430.mp4",from:3,crop:{horizontal:{x:50,y:40,scale:1.65},vertical:{x:50,y:50,scale:1}}},
       {lineId:"a02",image:"footage/kit-filter-panel.jpg",card:{width:1500,verticalWidth:1000,verticalImage:"footage/kit-filter-panel-portrait.jpg"}},
-      {lineId:"a03",file:"tailor_1920.mp4",portraitFile:"tailor_430.mp4",from:20,crop:{horizontal:{x:50,y:80,scale:1.5},vertical:{x:50,y:75,scale:1}}},
+      {lineId:"a03",file:"tailor_1920.mp4",portraitFile:"tailor_430.mp4",from:16,crop:{horizontal:{x:50,y:80,scale:1.5},vertical:{x:50,y:75,scale:1}}},
       {lineId:"a04",file:"tailor_1920.mp4",portraitFile:"tailor_430.mp4",from:24,portraitFrom:27.8,crop:{horizontal:{x:50,y:70,scale:1.55},vertical:{x:50,y:0,scale:1}}},
       {lineId:"a05",file:"tracker_1920.mp4",portraitFile:"tracker_430.mp4",from:20,portraitFrom:20,crop:{horizontal:{x:50,y:69,scale:1.5},vertical:{x:50,y:47,scale:1}}},
       {lineId:"a06",file:"applied_1920.mp4",portraitFile:"applied_430.mp4",from:7,crop:{horizontal:{x:50,y:72,scale:1.55},vertical:{x:50,y:68,scale:1}},label:"This only drafts text. You send it yourself.",hideLabelVertical:true},
