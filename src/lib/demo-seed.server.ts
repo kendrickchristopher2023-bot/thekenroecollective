@@ -43,7 +43,15 @@ async function admin() {
 /** Find the demo auth user id, creating the account if it does not exist yet. */
 export async function ensureDemoAccount(password: string): Promise<string | null> {
   const db = await admin();
-  const existing = await findDemoUserId();
+  let existing: string | null;
+  try {
+    existing = await findDemoUserId();
+  } catch {
+    // The directory lookup failed, so we cannot tell whether the account
+    // exists. Creating it blindly would fail with "email already registered"
+    // and leave the caller in a worse state, so bail out instead.
+    return null;
+  }
   if (existing) return existing;
 
   const { data, error } = await db.auth.admin.createUser({
@@ -61,12 +69,14 @@ export async function ensureDemoAccount(password: string): Promise<string | null
 
 export async function findDemoUserId(): Promise<string | null> {
   const db = await admin();
-  const { data } = await db.auth.admin.listUsers({ page: 1, perPage: 200 });
+  const { data, error } = await db.auth.admin.listUsers({ page: 1, perPage: 200 });
+  if (error) throw new Error(error.message);
   const match = data?.users?.find(
     (u) => (u.email ?? "").toLowerCase() === DEMO_ACCOUNT_EMAIL,
   );
   return match?.id ?? null;
 }
+
 
 function iso(daysFromNow: number): string {
   const d = new Date();
