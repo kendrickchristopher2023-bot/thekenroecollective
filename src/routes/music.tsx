@@ -1417,7 +1417,7 @@ function StudioComposer({ access }: { access: AccessInfo }) {
             </div>
           ) : (
             <p className="mt-3 text-xs text-ink/45">
-              Tick the box above to continue to payment.
+              Check the box above to continue to payment.
             </p>
           )}
         </div>

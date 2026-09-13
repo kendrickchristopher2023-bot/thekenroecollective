@@ -32,6 +32,9 @@ const PRESERVED_DEMO_EVENT_IDS = [...SNAPSHOT_EVENT_IDS, "showcase-wedding"] as 
 /** Slug prefix marking a vendor row as demo-owned and safe to delete on reset. */
 const DEMO_VENDOR_SLUG_PREFIX = "demo-";
 
+const DEMO_WORKROOM_PROJECT_ID = "d3a0c0de-0002-4f11-9e00-000000000001";
+const DEMO_WORKROOM_STOREFRONT_TASK_ID = "d3a0c0de-0003-4f11-9e00-000000000002";
+
 async function admin() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   return supabaseAdmin;
@@ -306,6 +309,38 @@ export async function resetDemoData(): Promise<{
   await db.from("purchase_consent_log").delete().eq("user_id", userId);
   await db.from("carts").delete().eq("user_id", userId);
   await db.from("ecards").delete().eq("organizer_user_id", userId);
+
+  // Keep the fixed Workroom film board in American English after every reset.
+  const { error: projectCopyError } = await db
+    .from("pm_projects")
+    .update({
+      description: "New storefront, new website, launch party on the first Saturday in April.",
+    })
+    .eq("id", DEMO_WORKROOM_PROJECT_ID)
+    .eq("owner_user_id", userId);
+  const { error: storefrontTaskError } = await db
+    .from("pm_tasks")
+    .update({
+      title: "Order storefront vinyl",
+      description: "Measure the glass twice. Supplier needs 10 business days.",
+    })
+    .eq("id", DEMO_WORKROOM_STOREFRONT_TASK_ID)
+    .eq("project_id", DEMO_WORKROOM_PROJECT_ID);
+  const { error: boardCopyError } = await db
+    .from("pm_tasks")
+    .update({ description: "Local paper and the two neighborhood newsletters." })
+    .eq("project_id", DEMO_WORKROOM_PROJECT_ID)
+    .eq("title", "Send the press note");
+  const { error: logoCopyError } = await db
+    .from("pm_tasks")
+    .update({ description: "Horizontal and stacked, one color and full color." })
+    .eq("project_id", DEMO_WORKROOM_PROJECT_ID)
+    .eq("title", "Sign off the new logo lockups");
+  const workroomCopyError =
+    projectCopyError ?? storefrontTaskError ?? boardCopyError ?? logoCopyError;
+  if (workroomCopyError) {
+    return { ok: false, reason: workroomCopyError.message };
+  }
 
   // Anything an owner deliberately deleted is tombstoned and stays deleted.
   const { data: tombstones } = await db

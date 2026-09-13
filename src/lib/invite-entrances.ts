@@ -59,7 +59,7 @@ export const INVITE_ANIMATIONS: EntranceMeta[] = [
     id: "dawn",
     name: "Dark to light",
     description:
-      "The invitation emerges from darkness into warm morning light, colour rising as it settles.",
+      "The invitation emerges from darkness into warm morning light, color rising as it settles.",
     tone: "elegant",
     premium: true,
     flagship: true,

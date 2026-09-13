@@ -496,7 +496,7 @@ function BrandPage() {
               </dd>
             </div>
             <div>
-              <dt className="text-sm font-medium text-foreground">Colour</dt>
+              <dt className="text-sm font-medium text-foreground">Color</dt>
               <dd className="mt-1 text-sm leading-relaxed text-muted-foreground">
                 {BRAND_RULES.colour}
               </dd>
