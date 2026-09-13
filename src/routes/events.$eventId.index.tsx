@@ -87,6 +87,7 @@ import { ColorField } from "@/components/color-field";
 import { DEFAULT_INVITE_BG } from "@/lib/color-contrast";
 import { uploadEventMedia, uploadMediaFile } from "@/lib/media-upload-client";
 import { SONG_ACCEPT, songFileError } from "@/components/event-song";
+import { InviteSongPicker } from "@/components/invite-song-picker";
 import { uploadFailedToast } from "@/lib/upload-retry-toast";
 
 import { formatStampDate, formatTimestamp } from "@/lib/datetime";
@@ -6548,6 +6549,7 @@ function SongField({ eventId, event }: { eventId: string; event: KEvent }) {
             MP3, M4A, AAC, OGG or WAV, up to 20MB. Only upload music you own or have the right to
             share. {busy ? "Uploading…" : ""}
           </p>
+          <InviteSongPicker eventId={eventId} currentTitle={event.songTitle ?? null} />
           {event.songUrl ? (
             <div className="space-y-2 rounded-xl bg-secondary/60 p-3">
               <input
