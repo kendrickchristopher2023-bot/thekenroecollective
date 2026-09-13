@@ -20,7 +20,7 @@ function EndCard({ film, cut }: { film: FilmData; cut: Cut }) {
   return <AbsoluteFill style={{ background: INK, color: OXBLOOD, alignItems: "center", justifyContent: "center", textAlign: "center", padding: vertical ? "300px 80px 400px" : "100px" }}><div style={{ opacity }}><div style={{ fontFamily: "Georgia,serif", fontSize: vertical ? 92 : 86, lineHeight: 1.05 }}>{film.title}</div><div style={{ marginTop: 44, fontSize: vertical ? 34 : 27 }}>{film.actions.join(" | ")}</div><div style={{ marginTop: 64, fontSize: vertical ? 25 : 19, color: "#5f5a54" }}>{DISCLOSURE}</div></div></AbsoluteFill>;
 }
 
-function SceneView({ scene, cut }: { scene: Scene; cut: Cut }) {
+function SceneView({ scene, cut, filmKey }: { scene: Scene; cut: Cut; filmKey: string }) {
   const vertical = cut === "vertical";
   const frame = useCurrentFrame();
   const { durationInFrames, fps } = useVideoConfig();
@@ -38,11 +38,11 @@ function SceneView({ scene, cut }: { scene: Scene; cut: Cut }) {
     const frameStyle: React.CSSProperties = crop ? { position: "absolute", width: `${crop.scale * 100}%`, height: `${crop.scale * 100}%`, left: `${(1 - crop.scale) * crop.x}%`, top: `${(1 - crop.scale) * crop.y}%` } : { position: "absolute", inset: 0 };
     const mediaStyle: React.CSSProperties = { width: "100%", height: "100%", objectFit: scene.fit ?? "cover", objectPosition: crop && crop.scale === 1 ? `${crop.x}% ${crop.y}%` : "center" };
     const media = <div style={frameStyle}>{scene.image ? <Img src={staticFile(scene.image)} style={mediaStyle} /> : file ? <Video src={staticFile(`footage/${file}`)} startFrom={Math.round(startAt * fps)} muted style={mediaStyle} /> : null}</div>;
-    const phone = file?.includes("invite") || file?.includes("example") || file?.includes("ecard");
+    const phone = filmKey === "celebrations" && (file?.includes("invite") || file?.includes("example") || file?.includes("ecard"));
     base = <AbsoluteFill style={{ background: "radial-gradient(circle at 50% 35%,#4e211e 0,#211715 55%,#120e0d 100%)", overflow: "hidden" }}>{phone ? <Device vertical={vertical}>{media}</Device> : media}{scene.label && !(vertical && scene.hideLabelVertical) ? <div style={{ position: "absolute", left: vertical ? 80 : 100, right: vertical ? 80 : 100, top: vertical ? 290 : 60, color: INK, background: OXBLOOD, border: `1px solid ${GOLD}`, padding: "16px 22px", fontSize: vertical ? 35 : 27, textAlign: "center", borderRadius: 12 }}>{scene.label}</div> : null}</AbsoluteFill>;
   }
 
-  if (!scene.leadImage) return base;
+  if (!scene.leadImage || (scene.leadImageVerticalOnly && !vertical)) return base;
   const leadFrames = Math.max(Math.round((scene.leadImageSeconds ?? 2) * fps), CROSSFADE_FRAMES + 1);
   const wallOpacity = interpolate(frame, [leadFrames - CROSSFADE_FRAMES, leadFrames], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   const leadScale = interpolate(frame, [0, leadFrames], [1, 1.025], { extrapolateRight: "clamp" });
@@ -100,7 +100,7 @@ export function CelebrationsFilm({ film, cut, hideCaptions = false }: { film: Fi
       const from = Math.round(visualStart * fps);
       const duration = Math.max(1, Math.round((end - visualStart) * fps));
       const opacity = index === 0 ? 1 : interpolate(frame - from, [0, CROSSFADE_FRAMES], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
-      return <Sequence key={scene.lineId} from={from} durationInFrames={duration} premountFor={CROSSFADE_FRAMES}><AbsoluteFill style={{ opacity }}>{scene.file || scene.image ? <SceneView scene={scene} cut={cut} /> : <EndCard film={film} cut={cut} />}</AbsoluteFill></Sequence>;
+      return <Sequence key={scene.lineId} from={from} durationInFrames={duration} premountFor={CROSSFADE_FRAMES}><AbsoluteFill style={{ opacity }}>{scene.file || scene.image ? <SceneView scene={scene} cut={cut} filmKey={film.key} /> : <EndCard film={film} cut={cut} />}</AbsoluteFill></Sequence>;
     })}
     <Audio src={staticFile(`audio/${film.bed}`)} volume={(audioFrame) => bedVolume(audioFrame, film, fps)} />
     {film.lines.map((line) => {
