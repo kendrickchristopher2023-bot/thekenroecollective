@@ -63,6 +63,13 @@ export function PhotoWallPanel({ eventId, eventTitle }: { eventId: string; event
 
   const load = useCallback(async () => {
     try {
+      // The host list needs a signed-in session; without one the server call
+      // rejects with a 401 that surfaces as a runtime error.
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) {
+        setPhotos([]);
+        return;
+      }
       const rows = await listEventPhotosForHost({ data: { eventId } });
       setPhotos(rows);
     } catch (e) {
