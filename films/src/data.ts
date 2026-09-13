@@ -4,7 +4,7 @@ export type FilmKey = "celebrations" | "workroom" | "application-kit";
 export type Cut = "horizontal" | "vertical";
 export type Line = { id:string; text:string; file:string; start:number; duration:number; captionEnd:number; sceneEnd:number; breathAfter:number; wpm:number; scene:string };
 export type Crop = { x:number; y:number; scale:number };
-export type Scene = { lineId:string; file?:string; portraitFile?:string; image?:string; leadImage?:string; leadImageSeconds?:number; leadImageVerticalOnly?:boolean; start?:number; from?:number; portraitFrom?:number; fit?:"cover"|"contain"; crop?:{horizontal?:Crop;vertical?:Crop}; card?:{width:number;verticalWidth:number;verticalImage?:string}; verticalCardImage?:string; label?:string; hideLabelVertical?:boolean };
+export type Scene = { lineId:string; file?:string; portraitFile?:string; image?:string; leadImage?:string; leadImageSeconds?:number; leadImageVerticalOnly?:boolean; start?:number; from?:number; portraitFrom?:number; rate?:number; fit?:"cover"|"contain"; crop?:{horizontal?:Crop;vertical?:Crop}; card?:{width:number;verticalWidth:number;verticalImage?:string}; verticalCardImage?:string; label?:string; hideLabelVertical?:boolean };
 export type FilmData = { key:FilmKey; title:string; duration:number; bed:string; lines:Line[]; scenes:Scene[]; status?:string; actions:string[] };
 export const DISCLOSURE = "All people, names and details shown are fictional.";
 const all = timelineJson.lines as Line[];
@@ -29,8 +29,8 @@ export const FILMS: Record<FilmKey, FilmData> = {
   workroom: {
     key:"workroom", title:"The Workroom", duration:timelineJson.filmDurations.w, bed:"bed-workroom.mp3", lines:lines("w"),
     scenes:[
-      {lineId:"w01",file:"f2-board.webm",from:8.83,crop:{horizontal:{x:50,y:74,scale:1.5}},verticalCardImage:"footage/w-cols-before.jpg",card:{width:0,verticalWidth:1000}},
-      {lineId:"w02",file:"f2-board.webm",from:9.81,crop:{horizontal:{x:50,y:100,scale:1.5}},leadImage:"footage/w-cols-before.jpg",leadImageSeconds:1,leadImageVerticalOnly:true,verticalCardImage:"footage/w-cols-after.jpg",card:{width:1500,verticalWidth:1000}},
+      {lineId:"w01",file:"f2-board.webm",from:2.85,rate:0.82,crop:{horizontal:{x:50,y:74,scale:1.5}},verticalCardImage:"footage/w-cols-before.jpg",card:{width:0,verticalWidth:1000}},
+      {lineId:"w02",file:"f2-board.webm",from:8.65,crop:{horizontal:{x:50,y:100,scale:1.5}},leadImage:"footage/w-cols-before.jpg",leadImageSeconds:1,leadImageVerticalOnly:true,verticalCardImage:"footage/w-cols-after.jpg",card:{width:1500,verticalWidth:1000}},
 
       {lineId:"w03",image:"footage/w-task.png",card:{width:640,verticalWidth:900}},
       {lineId:"w04",image:"footage/w-members.png",card:{width:760,verticalWidth:940}},
