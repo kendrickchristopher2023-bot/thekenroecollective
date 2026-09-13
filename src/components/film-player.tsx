@@ -226,7 +226,7 @@ export const FilmPlayer = forwardRef<FilmPlayerHandle>(function FilmPlayer(_, re
           <button
             type="button"
             onClick={startPlayback}
-            aria-label={`Play the ${film.title} film`}
+            aria-label={`Play ${film.title} film`}
             className="absolute inset-0 m-auto flex h-24 w-24 items-center justify-center rounded-full bg-paper text-velvet shadow-xl transition-transform hover:scale-105 focus:outline-none focus-visible:ring-4 focus-visible:ring-gold"
           >
             <Play className="ml-1 h-10 w-10" aria-hidden />
@@ -251,9 +251,6 @@ export const FilmPlayer = forwardRef<FilmPlayerHandle>(function FilmPlayer(_, re
             <button type="button" onClick={watchAgain} className={`${btn} bg-paper text-velvet hover:bg-paper/90`}>
               <Play className="h-4 w-4" aria-hidden />
               Watch again
-            </button>
-            <button type="button" onClick={close} className={`${btn} text-paper ring-1 ring-paper/40 hover:bg-paper/10`}>
-              Close
             </button>
           </div>
         ) : null}

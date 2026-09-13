@@ -371,7 +371,7 @@ function VenturesHub() {
               {film ? (
                 <button
                   type="button"
-                  aria-label={`Watch the ${film.title} film, ${film.durationSeconds} seconds`}
+                  aria-label={`Watch ${film.title} film, ${film.durationSeconds} seconds`}
                   onClick={(e) => {
                     markFilmSeen(film);
                     playerRef.current?.open({ film, mode: "watch", opener: e.currentTarget });

@@ -79,6 +79,7 @@ demo owners excluded from eCard crons, error alerts, and owner report counts.
 ### Homepage placement (14 Sep 2026)
 - [x] Public `site-films` bucket (read-only for visitors, service role writes), six films as `<name>-v1.mp4` (video/mp4) and six posters as `<name>-v1.jpg` (image/jpeg), long cache-control.
 - [x] Homepage: `Watch the film` pill per collection, full-screen player (upright under 768px or portrait, wide otherwise), first-click doorway for signed-out visitors with per-film `kc_film_seen_<key>_v1` flag. Config in `src/lib/site-films.ts`, player in `src/components/film-player.tsx`. Tested in preview; not published.
+- [x] Follow-up: removed the doubled article from film labels, switched only the wide Application Kit poster to `application-kit-horizontal-v2.jpg`, and kept one Close button on the end screen. Verified in preview; not published.
 
 ### Production rules
 - Use only real product footage captured from the live site with Playwright. No stock footage, actors, or mock screens.

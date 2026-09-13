@@ -32,13 +32,14 @@ const film = (
   title: string,
   durationLabel: string,
   durationSeconds: number,
+  horizontalPosterVersion = "v1",
 ): SiteFilm => ({
   key,
   category,
   title,
   horizontal: `${SITE_FILMS_BASE}/${key}-horizontal-v1.mp4`,
   vertical: `${SITE_FILMS_BASE}/${key}-vertical-v1.mp4`,
-  posterHorizontal: `${SITE_FILMS_BASE}/${key}-horizontal-v1.jpg`,
+  posterHorizontal: `${SITE_FILMS_BASE}/${key}-horizontal-${horizontalPosterVersion}.jpg`,
   posterVertical: `${SITE_FILMS_BASE}/${key}-vertical-v1.jpg`,
   durationLabel,
   durationSeconds,
@@ -47,7 +48,7 @@ const film = (
 export const SITE_FILMS: SiteFilm[] = [
   film("celebrations", "Celebrations", "Celebrations", "0:42", 42),
   film("workroom", "The Workroom", "The Workroom", "0:27", 27),
-  film("application-kit", "Career", "Application Kit", "0:39", 39),
+  film("application-kit", "Career", "Application Kit", "0:39", 39, "v2"),
 ];
 
 export function filmForCategory(category: string): SiteFilm | undefined {
