@@ -9,6 +9,7 @@ import { useIsOwner } from "@/lib/use-is-owner";
 import { getEntitlements } from "@/lib/entitlements-client";
 import { getPhotoWallAccess } from "@/lib/branding.functions";
 import { confirmDialog } from "@/lib/confirm-dialog";
+import { supabase } from "@/integrations/supabase/client";
 
 function errMsg(e: unknown, fallback: string): string {
   return e instanceof Error && e.message ? e.message : fallback;
