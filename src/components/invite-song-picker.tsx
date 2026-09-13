@@ -14,9 +14,8 @@ import { toast } from "sonner";
 import { Loader2, Music4 } from "lucide-react";
 
 import { toUserMessage } from "@/lib/user-error";
-import { uploadMediaFile } from "@/lib/media-upload-client";
 import { updateEvent } from "@/lib/events-store";
-import { getPieceAudioUrl, listMyPieces } from "@/lib/music-studio.functions";
+import { listMyPieces, publishPieceForInvite } from "@/lib/music-studio.functions";
 import { songLengthLabel } from "@/lib/wall-soundtrack";
 
 type Piece = { id: string; kind: string; title: string; seconds: number };
