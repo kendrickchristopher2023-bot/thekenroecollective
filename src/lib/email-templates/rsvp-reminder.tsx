@@ -45,7 +45,7 @@ const STRINGS = {
     footer: (h: string) =>
       `You're receiving this because ${h || 'your host'} added you to the guest list on The Kenroe Collective.`,
     attribution: (h: string, title: string) =>
-      `${h || 'Your host'} is organising ${title} and added you to the guest list.`,
+      `${h || 'Your host'} is organizing ${title} and added you to the guest list.`,
   },
   es: {
     preview: (title: string, deadline: string) =>

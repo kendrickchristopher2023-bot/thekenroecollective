@@ -625,7 +625,7 @@ export function MasterGuestReportPanel({ event, eventId }: { event: KEvent; even
           <div className="space-y-3">
             <div className="rounded-xl bg-amber-50 p-3 text-xs text-amber-900 ring-1 ring-amber-200">
               The RSVP form does not collect a separate emergency contact today, so this page lists each party's own
-              phone number and anyone travelling with them. Say the word and we will add an emergency-contact field to
+              phone number and anyone traveling with them. Say the word and we will add an emergency-contact field to
               the RSVP form.
             </div>
             <SimpleTable

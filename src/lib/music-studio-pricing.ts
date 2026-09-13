@@ -94,4 +94,4 @@ export function priceLabelForSeconds(seconds: number, kind: PieceKind = "song"):
 }
 
 export const PERSONAL_LICENCE =
-  "Personal use licence: you may play, share and include this piece in your own celebrations, cards and slideshows. Resale or commercial broadcast is not included.";
+  "Personal use license: you may play, share and include this piece in your own celebrations, cards and slideshows. Resale or commercial broadcast is not included.";

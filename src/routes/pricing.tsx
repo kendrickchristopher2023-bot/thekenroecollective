@@ -845,7 +845,7 @@ function PricingPage() {
 
         <div className="mx-auto mt-6 max-w-xl text-center">
           <p className="text-xs text-muted-foreground">
-            We believe in keeping things simple. Subscriptions can be cancelled at any time with no hassle. Because our services are delivered immediately upon purchase, all sales are final and we do not issue refunds. If you have questions, our support team is happy to help.
+            We believe in keeping things simple. Subscriptions can be canceled at any time with no hassle. Because our services are delivered immediately upon purchase, all sales are final and we do not issue refunds. If you have questions, our support team is happy to help.
           </p>
           <p className="mt-4 text-xs text-muted-foreground">
             Have questions?{" "}

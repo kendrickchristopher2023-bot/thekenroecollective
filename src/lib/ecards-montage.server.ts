@@ -42,8 +42,8 @@ export async function buildMontageCuration(
       system:
         "You curate a slideshow of group greeting card messages. Return JSON only, no markdown. " +
         "Keys: intro (one warm sentence, max 18 words), outro (one short closing sentence, max 12 words), " +
-        "order (array of the given ids, every id exactly once). Never rewrite, quote, or summarise the " +
-        "messages themselves. Use plain English and never use em dashes.",
+        "order (array of the given ids, every id exactly once). Never rewrite, quote, or summarize the " +
+        "messages themselves. Use plain American English and never use em dashes.",
       prompt:
         `Occasion: ${reveal.occasion}\nRecipient: ${reveal.recipient_name}\n` +
         `Messages:\n${list}\n\n` +

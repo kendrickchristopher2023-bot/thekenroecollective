@@ -357,7 +357,7 @@ export const draftCommunication = createServerFn({ method: "POST" })
       .filter(Boolean)
       .join("\n");
 
-    const system = `You write warm, clear announcement copy for The Kenroe Collective, an elegant event-planning brand. Tone: refined, considerate, never anxious. Sign off as "— The Kenroe Collective".`;
+    const system = `You write warm, clear announcement copy in plain American English for The Kenroe Collective, an elegant event-planning brand. Tone: refined, considerate, never anxious. Sign off as "The Kenroe Collective".`;
 
     const prompt = `Based on the following, return STRICT JSON with three fields:
 {

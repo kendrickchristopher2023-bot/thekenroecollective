@@ -63,7 +63,7 @@ const BringSheetNudgeEmail = ({
           )}
         </Section>
         <Text style={footer}>
-          You are receiving this because {hostName || 'your host'} is organising a sign-up sheet for
+          You are receiving this because {hostName || 'your host'} is organizing a sign-up sheet for
           this event on The Kenroe Collective. Bringing nothing is fine too, just come hungry.
         </Text>
       </Container>

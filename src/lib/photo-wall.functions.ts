@@ -947,8 +947,8 @@ async function polishSongPrompt(
       model: gateway("google/gemini-3.7-flash"),
       system:
         kind === "poem"
-          ? "You write prompts for a music model that can perform spoken word over music. Rewrite the request as clear direction for a spoken performance: the speaking voice, its pace and warmth, and a sparse instrumental bed sitting well under the voice. If exact words to be read are given, repeat them verbatim at the end under the line 'Words to read:' and change nothing in them, not a single word or name. No headings otherwise. Reply with the prompt only."
-          : "You write prompts for a music generation model. Rewrite the request as one vivid paragraph of musical direction: instrumentation, groove, arrangement, vocal character, and how the piece grows from start to finish. Keep every constraint given, including any spelling of names. No lyrics, no headings, no more than 90 words. Reply with the prompt only.",
+          ? "You write prompts for a music model that can perform spoken word over music. Use American English spelling. Rewrite the request as clear direction for a spoken performance: the speaking voice, its pace and warmth, and a sparse instrumental bed sitting well under the voice. If exact words to be read are given, repeat them verbatim at the end under the line 'Words to read:' and change nothing in them, not a single word or name. No headings otherwise. Reply with the prompt only."
+          : "You write prompts for a music generation model. Use American English spelling. Rewrite the request as one vivid paragraph of musical direction: instrumentation, groove, arrangement, vocal character, and how the piece grows from start to finish. Keep every constraint given, including any spelling of names. No lyrics, no headings, no more than 90 words. Reply with the prompt only.",
       prompt: basePrompt,
     });
     const cleaned = text.trim().replace(/^["']|["']$/g, "");
@@ -998,8 +998,8 @@ export const draftWallSongWords = createServerFn({ method: "POST" })
     const budget = poemWordBudget(data.seconds);
     const system =
       data.want === "poem"
-        ? `You write short pieces to be read aloud at a family celebration. Write a ${data.poemStyle} that feels ${data.mood}. About ${budget} words, in short lines, no title, no stage directions, no emoji. Use only names and facts the host gave you and invent nothing about the people. Warm and specific, never greeting-card generic. Reply with the poem only.`
-        : "You help a host describe the piece of music they want. Rewrite their notes as three or four vivid sentences: who it is for, the feeling, the moment it plays, and any names spelled the way they should be pronounced. Keep every fact they gave and invent no new ones. No lists, no headings, under 90 words. Reply with the description only.";
+        ? `You write short pieces to be read aloud at a family celebration. Use American English spelling. Write a ${data.poemStyle} that feels ${data.mood}. About ${budget} words, in short lines, no title, no stage directions, no emoji. Use only names and facts the host gave you and invent nothing about the people. Warm and specific, never greeting-card generic. Reply with the poem only.`
+        : "You help a host describe the piece of music they want. Use American English spelling. Rewrite their notes as three or four vivid sentences: who it is for, the feeling, the moment it plays, and any names spelled the way they should be pronounced. Keep every fact they gave and invent no new ones. No lists, no headings, under 90 words. Reply with the description only.";
 
     const { createLovableAiGatewayProvider } = await import("@/lib/ai-gateway.server");
     const { generateText } = await import("ai");

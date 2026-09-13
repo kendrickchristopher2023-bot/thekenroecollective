@@ -28,7 +28,7 @@ export type BrandAsset = {
 export const BRAND_ASSETS: BrandAsset[] = [
   {
     file: "kenroe-logo-vector-master.svg",
-    label: "Vector master (full colour)",
+    label: "Vector master (full color)",
     what: "Scales to any size with no loss. Send this to printers and sign makers.",
     dimensions: "Vector, any size",
     ground: "vector",
@@ -42,8 +42,8 @@ export const BRAND_ASSETS: BrandAsset[] = [
   },
   {
     file: "kenroe-logo-vector-one-colour-black.svg",
-    label: "Vector master (single colour)",
-    what: "Solid black for one-colour printing, embroidery, stamps and engraving.",
+    label: "Vector master (single color)",
+    what: "Solid black for one-color printing, embroidery, stamps and engraving.",
     dimensions: "Vector, any size",
     ground: "vector",
   },
@@ -57,7 +57,7 @@ export const BRAND_ASSETS: BrandAsset[] = [
   {
     file: "kenroe-logo-portrait-3x4-1500x2000-transparent.png",
     label: "Portrait 3:4 (transparent)",
-    what: "The same portrait with no background, to sit over your own colour or photo.",
+    what: "The same portrait with no background, to sit over your own color or photo.",
     dimensions: "1500 x 2000",
     ground: "transparent",
   },
@@ -106,7 +106,7 @@ export const BRAND_ASSETS: BrandAsset[] = [
   {
     file: "kenroe-logo-white-inverse-2400px-transparent.png",
     label: "White / inverse",
-    what: "Cream white artwork with no background, for use on dark colours and photographs.",
+    what: "Cream white artwork with no background, for use on dark colors and photographs.",
     dimensions: "2400 x 560",
     ground: "transparent",
   },
@@ -119,8 +119,8 @@ export const BRAND_ASSETS: BrandAsset[] = [
   },
   {
     file: "kenroe-logo-one-colour-black-2400px-transparent.png",
-    label: "Single colour (black)",
-    what: "Solid black with no background, for one-colour printing, embroidery and engraving.",
+    label: "Single color (black)",
+    what: "Solid black with no background, for one-color printing, embroidery and engraving.",
     dimensions: "2400 x 560",
     ground: "transparent",
   },
@@ -203,16 +203,16 @@ export const BRAND_RULES = {
   minimumSizePrint:
     "In print, never place the wide logo narrower than 1 inch (25 mm), and always supply the vector file rather than a picture file.",
   colour:
-    "Use the oxblood ink on light grounds and the cream white version on dark grounds. Use the single colour version whenever only one ink is available.",
+    "Use the oxblood ink on light grounds and the cream white version on dark grounds. Use the single color version whenever only one ink is available.",
   qrCode: [
     "The printed code must open https://thekenroecollective.com/card and nothing else. Never use a third party QR shortener: those links expire or start charging, and every printed card becomes dead paper.",
     "Print it no smaller than 0.8 inch (20 mm) square. Smaller is unreliable, especially on older phones.",
     "Leave a clear quiet zone all the way around, at least four modules wide (about the width of four of the smallest squares in the code). Nothing may sit inside it.",
     "Dark code on a light background only. Inverted light-on-dark artwork fails on a lot of scanners.",
-    "The supplied code is error correction level H, so a small logo may sit in the centre covering no more than the middle fifth. If the code is ever regenerated at a lower level, no logo in the centre.",
+    "The supplied code is error correction level H, so a small logo may sit in the center covering no more than the middle fifth. If the code is ever regenerated at a lower level, no logo in the center.",
   ].join(" "),
   dontDo:
-    "Do not stretch, rotate, recolour, add a shadow to, or place the logo on a busy part of a photograph.",
+    "Do not stretch, rotate, recolor, add a shadow to, or place the logo on a busy part of a photograph.",
 };
 
 export function brandGuidelinesText(): string {
@@ -228,7 +228,7 @@ export function brandGuidelinesText(): string {
     "MINIMUM SIZE, PRINT",
     BRAND_RULES.minimumSizePrint,
     "",
-    "COLOUR",
+    "COLOR",
     BRAND_RULES.colour,
     BRAND_COLOURS.map((c) => `  ${c.name}  ${c.hex}  ${c.use}`).join("\n"),
     "",

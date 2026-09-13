@@ -147,7 +147,7 @@ function demoEvents(userId: string) {
         venue: "Villa Serrano",
         address: "Camino del Olivar 4, Ronda",
         description: "A three-day celebration in the hills above Ronda.",
-        message: "We would be honoured to have you with us.",
+        message: "We would be honored to have you with us.",
         dressCode: "Garden formal",
         createdAt: new Date().toISOString(),
         capacity: 80,

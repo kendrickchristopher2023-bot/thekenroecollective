@@ -193,7 +193,7 @@ export const aiRewriteCopy = createServerFn({ method: "POST" })
 
     const key = process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("AI is not configured");
-    const sys = `You rewrite short event-design copy. Return ONLY the rewritten line, no quotes, no explanations. Tone: ${data.tone}. Max ${data.maxChars} characters. Avoid clichés and emoji.`;
+    const sys = `You rewrite short event-design copy in American English. Return ONLY the rewritten line, no quotes, no explanations. Tone: ${data.tone}. Max ${data.maxChars} characters. Avoid clichés and emoji.`;
     const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },

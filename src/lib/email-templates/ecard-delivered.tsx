@@ -43,7 +43,7 @@ const EcardDeliveredEmail = ({
             <Text style={messageStyle}>{`Reveal time: ${revealTimeLabel}.`}</Text>
           ) : null}
           <Text style={messageStyle}>
-            Thank you for organising it. The card stays online as a keepsake, so you can revisit it
+            Thank you for organizing it. The card stays online as a keepsake, so you can revisit it
             any time.
           </Text>
           <Section style={{ textAlign: 'center', margin: '26px 0 8px' }}>

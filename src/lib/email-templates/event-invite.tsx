@@ -139,8 +139,8 @@ const EventInviteEmail = ({
                 unfamiliar sender is the main reason invitations get deleted. */}
             <Text style={attribution}>
               {hostName
-                ? `${hostName} is organising ${eventTitle} and added you to the guest list.`
-                : `Your host is organising ${eventTitle} and added you to the guest list.`}
+                ? `${hostName} is organizing ${eventTitle} and added you to the guest list.`
+                : `Your host is organizing ${eventTitle} and added you to the guest list.`}
             </Text>
 
             <Text style={greeting}>

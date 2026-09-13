@@ -178,7 +178,7 @@ function MusicStudioPage() {
         </h1>
         <p className="mt-4 max-w-2xl text-base text-ink/70">
           An original song or spoken-word piece written for one occasion, with the
-          guests of honour named out loud. Choose the feel, hear a short taste, then
+          guests of honor named out loud. Choose the feel, hear a short taste, then
           keep the full version to play at the party, in a slideshow, or on a card.
         </p>
 
@@ -192,7 +192,7 @@ function MusicStudioPage() {
           {[
             {
               title: "Songs that say the names",
-              body: "Sung, in the genre and mood you pick, with the spelling honoured so names are never mumbled.",
+              body: "Sung, in the genre and mood you pick, with the spelling honored so names are never mumbled.",
             },
             {
               title: "Spoken word",

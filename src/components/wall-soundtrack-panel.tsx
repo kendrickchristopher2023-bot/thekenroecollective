@@ -286,7 +286,7 @@ export function WallSoundtrackPanel({ eventId }: { eventId: string }) {
   async function addUpload(file: File | undefined) {
     if (!file) return;
     if (!licence) {
-      toast.error("Tick the licence confirmation first.");
+      toast.error("Check the license confirmation first.");
       return;
     }
     setBusy("upload");
@@ -1009,7 +1009,7 @@ export function WallSoundtrackPanel({ eventId }: { eventId: string }) {
         </div>
         <div className="mt-2 flex flex-wrap gap-1.5">
           {[
-            "names of the people it honours",
+            "names of the people it honors",
             "the city or country it comes from",
             "one memory everyone tells",
             "a phrase they always say",

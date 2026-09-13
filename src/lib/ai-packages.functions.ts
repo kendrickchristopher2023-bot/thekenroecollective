@@ -129,7 +129,7 @@ const PackageSchema = z.object({
 
 function systemPromptFor(kind: AiPackageKind): string {
   const base =
-    "You are Kenroe, an editorial event-planning concierge. Output is warm, specific, and never generic. ALWAYS return ONLY valid minified JSON — no markdown fences, no prose before or after. Use US dollars in cents (integers) for prices.";
+    "You are Kenroe, an editorial event-planning concierge. Output is warm, specific, and never generic. Use plain American English spelling. ALWAYS return ONLY valid minified JSON, with no markdown fences or prose before or after. Use US dollars in cents (integers) for prices.";
   const schemaHint =
     ' Schema: {"title":string,"summary":string,"sections":[{"heading":string,"items":[{"name":string,"description":string,"price_cents":number|null,"notes":string}]}],"tiers":[{"name":string,"price_cents":number|null,"includes":[string]}],"estimated_total_cents":number|null}';
   if (kind === "food_menu")

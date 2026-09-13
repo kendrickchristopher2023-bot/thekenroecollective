@@ -70,7 +70,7 @@ export const FALLBACK_VENTURES: Venture[] = [
     id: "fallback-sound",
     name: "Kenroe Sound Studio",
     tagline:
-      "An original song or spoken-word piece written for one occasion, with the guests of honour named out loud.",
+      "An original song or spoken-word piece written for one occasion, with the guests of honor named out loud.",
     href: "/music",
     cta_label: "Preview the studio",
     is_external: false,

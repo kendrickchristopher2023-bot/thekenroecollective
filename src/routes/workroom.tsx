@@ -43,7 +43,7 @@ const FEATURES = [
   {
     Icon: KanbanSquare,
     title: "Boards that stay readable",
-    body: "Four columns, drag to move, color where it earns its place. No ceremony, no sprint theatre.",
+    body: "Four columns, drag to move, color where it earns its place. No ceremony, no sprint showmanship.",
   },
   {
     Icon: Users,

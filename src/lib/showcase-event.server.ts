@@ -235,7 +235,7 @@ export const SHOWCASE_WELL_WISHES: { name: string; message: string }[] = [
   { name: "Naomi Adebayo", message: "I have known Amara since she was small enough to sit on the counter while I cooked. What a joy this is." },
   { name: "Curtis Beaumont", message: "Elias, you got the better end of this deal and you know it. Congratulations to you both." },
   { name: "Marguerite Lacroix", message: "Wishing you a long marriage full of ordinary Tuesdays as good as this day will be." },
-  { name: "Bishop Emmanuel Cray", message: "It is my honour to stand with you under those trees." },
+  { name: "Bishop Emmanuel Cray", message: "It is my honor to stand with you under those trees." },
   { name: "Harriet Ndlovu", message: "Save me one dance. Just one, and then I will sit down." },
 ];
 

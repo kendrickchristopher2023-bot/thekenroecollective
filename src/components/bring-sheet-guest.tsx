@@ -301,7 +301,7 @@ export function BringSheetGuest({
               Heads up for anyone cooking:{" "}
               {dietary > 0 ? `${dietary} ${dietary === 1 ? "guest has" : "guests have"} noted dietary restrictions` : ""}
               {dietary > 0 && access > 0 ? ", and " : ""}
-              {access > 0 ? `${access} noted accessibility needs` : ""}. Labelling ingredients is
+              {access > 0 ? `${access} noted accessibility needs` : ""}. Labeling ingredients is
               always appreciated.
             </p>
           );

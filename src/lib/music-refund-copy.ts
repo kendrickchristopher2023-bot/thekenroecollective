@@ -18,4 +18,4 @@ export const MUSIC_REFUND_POINTS: readonly string[] = [
 ];
 
 export const MUSIC_REFUND_FOOTNOTE =
-  "Every piece comes with a personal use licence. Resale and commercial broadcast are not included.";
+  "Every piece comes with a personal use license. Resale and commercial broadcast are not included.";

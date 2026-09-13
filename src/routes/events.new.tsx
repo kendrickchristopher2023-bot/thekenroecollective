@@ -402,7 +402,7 @@ function NewEvent() {
                 </select>
                 <p className="mt-2 text-xs text-muted-foreground">
                   Guests see this clock time with its zone label, plus a small "your time" line if
-                  they are travelling.
+                  they are traveling.
                 </p>
               </Field>
               <Field label="Venue" valid={venue.trim().length >= 2}>

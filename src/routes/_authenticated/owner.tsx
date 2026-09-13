@@ -1122,7 +1122,7 @@ function DigitalCardsCard() {
                 <div className="mt-2 grid gap-2 sm:grid-cols-2">
                   {field(card, "full_name", "Full name", "Christopher Kendrick")}
                   {field(card, "role", "Role or title", "Founder")}
-                  {field(card, "organisation", "Organisation", "The Kenroe Collective")}
+                  {field(card, "organisation", "Organization", "The Kenroe Collective")}
                   {field(card, "email", "Email address", "concierge@thekenroecollective.com")}
                   {field(card, "phone", "Phone number", "+19802360667")}
                   {field(card, "website", "Website", "https://thekenroecollective.com")}

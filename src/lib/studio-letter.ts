@@ -242,6 +242,7 @@ export function letterWritingPrompt(input: {
     input.mustInclude ? `MUST APPEAR, IN THESE WORDS: ${input.mustInclude}` : "",
     input.about ? `BACKGROUND THE WRITER GAVE YOU: ${input.about}` : "",
     input.draft ? `THE WRITER'S OWN DRAFT, WHICH IS THE SOURCE OF TRUTH:\n${input.draft}` : "",
+    "SPELLING: Write in American English.",
     "ABSOLUTE RULES. You may tighten, cut repetition, reorder for rhythm and fix grammar. You may NOT invent any fact: no name, no place, no date, no number, no quotation, no memory, no illness, no cause of death, no relationship that is not stated above. If something is missing, leave it out rather than guessing. Write nothing about the writer or the recipient that you were not told.",
     "FORM: paragraphs separated by a blank line. No headings, no stage directions, no emoji, no markdown. Return the letter only.",
   ]

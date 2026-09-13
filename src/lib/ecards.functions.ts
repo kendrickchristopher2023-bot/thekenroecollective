@@ -476,7 +476,7 @@ export const draftEcardMessage = createServerFn({ method: "POST" })
       const { text } = await generateText({
         model: gateway("google/gemini-3.6-flash"),
         system:
-          "You write short, warm, sincere group greeting card messages in British English. " +
+          "You write short, warm, sincere group greeting card messages in American English. " +
           "Two to four sentences, no more than 60 words. Never use em dashes. Do not use headings, " +
           "quotes, or markdown. Do not sign off with a name.",
         prompt:

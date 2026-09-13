@@ -163,7 +163,7 @@ export const ECARD_THEMES: EcardTheme[] = [
   {
     id: "ivory",
     name: "Ivory",
-    blurb: "Wedding formal. Quiet ivory and soft grey.",
+    blurb: "Wedding formal. Quiet ivory and soft gray.",
     bg: "linear-gradient(160deg, #FBF8F3 0%, #F0EBE3 100%)",
     surface: "#FFFFFF",
     ink: "#20201D",

@@ -465,7 +465,7 @@ async function directBrief(brief: string, seconds: number): Promise<string> {
     const { text } = await generateText({
       model: gateway("google/gemini-3.6-flash"),
       system:
-        "You are a record producer writing the brief a composer will follow. Rewrite the brief you are given as tight production direction: arrangement across the timeline, where the emotional peak lands, how the vocal is delivered, and how it ends. Keep every name, quoted line and instruction exactly as written and never add facts, people or events. No headings, no bullet symbols other than '-', under 220 words. Reply with the brief only.",
+        "You are a record producer writing the brief a composer will follow. Use American English spelling. Rewrite the brief you are given as tight production direction: arrangement across the timeline, where the emotional peak lands, how the vocal is delivered, and how it ends. Keep every name, quoted line and instruction exactly as written and never add facts, people or events. No headings, no bullet symbols other than '-', under 220 words. Reply with the brief only.",
       prompt: `Target length: ${seconds} seconds.\n\n${brief}`,
       maxOutputTokens: 700,
     });
@@ -495,7 +495,7 @@ async function aiSplit(words: string, deterministic: BriefSplit): Promise<BriefS
     const { text } = await generateText({
       model: gateway("google/gemini-3.6-flash"),
       system:
-        "You sort a songwriting brief into buckets. Return ONLY minified JSON with keys: subject (string, what the piece is about, in the host's own words, with no instructions to the studio), mustInclude (array of short words or lines that have to appear in the lyrics), positives (array of positive rewrites of anything the host asked to leave out), negatives (array of the same constraints as short phrases), production (array of sentences about how it should sound), discarded (array of sentences that are instructions to the studio rather than content, for example pleasantries, 'get this right', 'make it a banger', 'people will download it'). Never invent facts, names or events. Copy wording rather than paraphrasing.",
+        "You sort a songwriting brief into buckets. Use American English spelling for any words you write. Return ONLY minified JSON with keys: subject (string, what the piece is about, in the host's own words, with no instructions to the studio), mustInclude (array of short words or lines that have to appear in the lyrics), positives (array of positive rewrites of anything the host asked to leave out), negatives (array of the same constraints as short phrases), production (array of sentences about how it should sound), discarded (array of sentences that are instructions to the studio rather than content, for example pleasantries, 'get this right', 'make it a banger', 'people will download it'). Never invent facts, names or events. Copy wording rather than paraphrasing.",
       prompt: words.slice(0, WORDS_MAX),
       maxOutputTokens: 900,
     });

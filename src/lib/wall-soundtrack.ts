@@ -62,7 +62,7 @@ export const SAMPLE_LIMIT_MESSAGE =
 
 
 export const MUSIC_LICENCE_TEXT =
-  "I confirm I own this recording or hold a licence that allows it to be played at my event, and that I am not uploading a copyrighted commercial track without permission.";
+  "I confirm I own this recording or hold a license that allows it to be played at my event, and that I am not uploading a copyrighted commercial track without permission.";
 
 export const AI_SONG_CREDIT =
   "Original song composed by AI for this event. Free to use at the event and in the slideshow.";
@@ -867,7 +867,7 @@ export function recommendedKind(occasionText: string): { kind: string; why: stri
     };
   }
   if (/graduation|retirement|award|honou?r|anniversary/.test(t)) {
-    return { kind: "poem", why: "For a moment of honour, a poem read over music suits the room." };
+    return { kind: "poem", why: "For a moment of honor, a poem read over music suits the room." };
   }
   if (/wedding|engagement|vow/.test(t)) {
     return {
