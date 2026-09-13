@@ -9,6 +9,7 @@ import { useIsOwner } from "@/lib/use-is-owner";
 import { getEntitlements } from "@/lib/entitlements-client";
 import { getPhotoWallAccess } from "@/lib/branding.functions";
 import { confirmDialog } from "@/lib/confirm-dialog";
+import { supabase } from "@/integrations/supabase/client";
 
 function errMsg(e: unknown, fallback: string): string {
   return e instanceof Error && e.message ? e.message : fallback;
@@ -63,6 +64,13 @@ export function PhotoWallPanel({ eventId, eventTitle }: { eventId: string; event
 
   const load = useCallback(async () => {
     try {
+      // The host list needs a signed-in session; without one the server call
+      // rejects with a 401 that surfaces as a runtime error.
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) {
+        setPhotos([]);
+        return;
+      }
       const rows = await listEventPhotosForHost({ data: { eventId } });
       setPhotos(rows);
     } catch (e) {
