@@ -5,14 +5,14 @@ export type Cut = "horizontal" | "vertical";
 export type Line = { id:string; text:string; file:string; start:number; duration:number; captionEnd:number; sceneEnd:number; breathAfter:number; wpm:number; scene:string };
 export type Crop = { x:number; y:number; scale:number };
 export type Scene = { lineId:string; file?:string; portraitFile?:string; image?:string; leadImage?:string; leadImageSeconds?:number; start?:number; from?:number; portraitFrom?:number; fit?:"cover"|"contain"; crop?:{horizontal?:Crop;vertical?:Crop}; card?:{width:number;verticalWidth:number;verticalImage?:string}; verticalCardImage?:string; label?:string; hideLabelVertical?:boolean };
-export type FilmData = { key:FilmKey; title:string; duration:number; bed:string; lines:Line[]; scenes:Scene[]; status?:string; actions:string[]; smoothEditing?:boolean };
+export type FilmData = { key:FilmKey; title:string; duration:number; bed:string; lines:Line[]; scenes:Scene[]; status?:string; actions:string[] };
 export const DISCLOSURE = "All people, names and details shown are fictional.";
 const all = timelineJson.lines as Line[];
 const lines = (prefix:string) => all.filter((line)=>line.id.startsWith(prefix));
 
 export const FILMS: Record<FilmKey, FilmData> = {
   celebrations: {
-    key:"celebrations", title:"Celebrations", duration:timelineJson.filmDurations.c, bed:"bed-celebrations.mp3", lines:lines("c"), smoothEditing:true,
+    key:"celebrations", title:"Celebrations", duration:timelineJson.filmDurations.c, bed:"bed-celebrations.mp3", lines:lines("c"),
     scenes:[
       {lineId:"c01",file:"c-live-invite.webm",from:7.95,fit:"cover"},
       {lineId:"c02",file:"c-live-invite.webm",from:10.15,fit:"cover"},
