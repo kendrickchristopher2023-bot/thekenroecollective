@@ -1,0 +1,681 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-paper: var(--paper);
+  --color-velvet: var(--velvet);
+  --color-ink: var(--ink);
+  --color-gold: var(--gold);
+  --color-platinum: var(--platinum);
+  --color-platinum-foreground: var(--platinum-foreground);
+  --color-sage: var(--sage);
+  --color-blossom: var(--blossom);
+  --color-cyprus: var(--cyprus);
+  --color-cyprus-deep: var(--cyprus-deep);
+  --color-velvet-deep: var(--velvet-deep);
+  --color-walnut: var(--walnut);
+  --color-walnut-deep: var(--walnut-deep);
+
+
+  --font-serif: "Cormorant Garamond", ui-serif, Georgia, serif;
+  --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
+}
+
+:root {
+  --radius: 0.75rem;
+
+  /* Noir & Gold brand */
+  --paper: #f5f2ea;         /* ivory */
+  --velvet: #8a1a1a;        /* deep oxblood accent */
+  --velvet-deep: #661212;
+  --ink: #0d0d0d;           /* rich black */
+  --gold: #c9a84c;          /* muted gold */
+  --sage: #6b8a6f;
+  /* Venture 03 accent: deep cypress teal, distinct from oxblood and gold */
+  --blossom: #b8576a;
+  --cyprus: #1f5f66;
+  --cyprus-deep: #164a50;
+  /* Venture 02 accent: warm walnut brown */
+  --walnut: #6b4227;
+  --walnut-deep: #513018;
+  --platinum: #ebe6d8;
+  --platinum-foreground: #0d0d0d;
+  /* Stable destructive red, kept independent of the venture accent so
+     scoped venture themes below never recolor danger states. */
+  --kc-destructive: #8a1a1a;
+
+
+  --background: var(--paper);
+  --foreground: var(--ink);
+  --card: #ffffff;
+  --card-foreground: var(--ink);
+  --popover: #ffffff;
+  --popover-foreground: var(--ink);
+  --primary: var(--ink);
+  --primary-foreground: var(--paper);
+  --secondary: var(--platinum);
+  --secondary-foreground: var(--ink);
+  --muted: #ede8d9;
+  --muted-foreground: #5c554a;
+  --accent: var(--gold);
+  --accent-foreground: var(--ink);
+  --destructive: var(--velvet);
+  --destructive-foreground: #ffffff;
+  --border: rgba(13, 13, 13, 0.10);
+  --input: rgba(13, 13, 13, 0.14);
+  --ring: var(--gold);
+
+  --gradient-primary: linear-gradient(135deg, var(--ink), #1c1c1c);
+  --gradient-hero: radial-gradient(1200px 600px at 20% 10%, color-mix(in oklab, var(--gold) 20%, transparent), transparent 60%),
+                   radial-gradient(900px 500px at 90% 30%, color-mix(in oklab, var(--velvet) 14%, transparent), transparent 65%);
+  --shadow-elegant: 0 12px 32px -14px color-mix(in oklab, var(--ink) 40%, transparent);
+  --shadow-gold: 0 8px 24px -12px color-mix(in oklab, var(--gold) 55%, transparent);
+}
+
+.dark {
+  /* Brand token overrides so bg-paper / text-ink / bg-secondary flip too */
+  --paper: #0d0d0d;
+  --ink: #f5f2ea;
+  --platinum: #1f1f1f;
+  --platinum-foreground: #f5f2ea;
+  --blossom: #e08b9c;
+  --cyprus: #5fb3ba;
+  --cyprus-deep: #4a9aa1;
+  --walnut: #c69a72;
+  --walnut-deep: #ae8158;
+  --kc-destructive: #b8321f;
+
+
+  --background: #0d0d0d;
+  --foreground: #f5f2ea;
+  --card: #1a1a1a;
+  --card-foreground: #f5f2ea;
+  --popover: #1a1a1a;
+  --popover-foreground: #f5f2ea;
+  --primary: var(--gold);
+  --primary-foreground: #0d0d0d;
+  --secondary: #1f1f1f;
+  --secondary-foreground: #f5f2ea;
+  --muted: #1f1f1f;
+  --muted-foreground: #b8b09c;
+  --accent: var(--gold);
+  --accent-foreground: #0d0d0d;
+  --destructive: #b8321f;
+  --destructive-foreground: #ffffff;
+  --border: rgba(245, 242, 234, 0.10);
+  --input: rgba(245, 242, 234, 0.16);
+  --ring: var(--gold);
+
+  --gradient-primary: linear-gradient(135deg, #1a1a1a, #0d0d0d);
+  --gradient-hero: radial-gradient(1200px 600px at 20% 10%, color-mix(in oklab, var(--gold) 22%, transparent), transparent 60%),
+                   radial-gradient(900px 500px at 90% 30%, color-mix(in oklab, var(--velvet) 30%, transparent), transparent 65%);
+}
+
+/* Utilities that hardcode ink-on-paper alpha need to flip in dark too */
+.dark .border-ink\/5,
+.dark .border-ink\/10,
+.dark .border-ink\/15,
+.dark .border-ink\/20 { border-color: rgba(245, 242, 234, 0.12); }
+.dark .ring-ink\/5,
+.dark .ring-ink\/10,
+.dark .ring-ink\/15 { --tw-ring-color: rgba(245, 242, 234, 0.14); }
+.dark .bg-ink\/5,
+.dark .bg-ink\/10 { background-color: rgba(245, 242, 234, 0.06); }
+
+/* ---------------------------------------------------------------------------
+   Venture interior theming.
+   Each venture interior wraps its page in one of these scopes. Everything the
+   app already paints with the velvet accent (buttons, active states, section
+   accents) picks up that venture's color automatically, so the hub tile and
+   the interior can never drift apart. Danger states stay red on purpose.
+   --------------------------------------------------------------------------- */
+.venture-events {
+  --venture-accent: var(--velvet);
+  --venture-accent-deep: var(--velvet-deep);
+}
+.venture-projects {
+  --venture-accent: var(--cyprus);
+  --venture-accent-deep: var(--cyprus-deep);
+  --velvet: var(--cyprus);
+  --velvet-deep: var(--cyprus-deep);
+  --destructive: var(--kc-destructive);
+  --ring: var(--cyprus);
+}
+.venture-ecards {
+  --venture-accent: var(--walnut);
+  --venture-accent-deep: var(--walnut-deep);
+  --velvet: var(--walnut);
+  --velvet-deep: var(--walnut-deep);
+  --destructive: var(--kc-destructive);
+  --ring: var(--walnut);
+}
+
+
+
+
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    font-feature-settings: "ss01";
+  }
+  h1, h2, h3, h4, h5 {
+    font-family: var(--font-serif);
+  }
+}
+
+/* Book-page turn animation for the event wizard */
+@keyframes page-turn-in {
+  0%   { opacity: 0; transform: perspective(1600px) rotateY(-85deg); transform-origin: left center; box-shadow: 30px 0 40px -20px rgba(0,0,0,0.35); }
+  60%  { opacity: 1; }
+  100% { opacity: 1; transform: perspective(1600px) rotateY(0deg);   transform-origin: left center; box-shadow: 0 0 0 rgba(0,0,0,0); }
+}
+@keyframes page-turn-in-reverse {
+  0%   { opacity: 0; transform: perspective(1600px) rotateY(85deg);  transform-origin: right center; box-shadow: -30px 0 40px -20px rgba(0,0,0,0.35); }
+  60%  { opacity: 1; }
+  100% { opacity: 1; transform: perspective(1600px) rotateY(0deg);   transform-origin: right center; box-shadow: 0 0 0 rgba(0,0,0,0); }
+}
+.page-turn-forward { animation: page-turn-in 0.55s cubic-bezier(.2,.7,.2,1) both; backface-visibility: hidden; }
+.page-turn-back    { animation: page-turn-in-reverse 0.55s cubic-bezier(.2,.7,.2,1) both; backface-visibility: hidden; }
+.page-stage { perspective: 1600px; }
+
+/* ============================================================
+   Invitation entrance animations
+   Transform + opacity only (plus one filter on a single small card), so old
+   phones stay on the compositor. Every curve is custom: nothing uses linear.
+   Randomised per-element values arrive as inline custom properties.
+   ============================================================ */
+.kc-ent {
+  --ent-settle: cubic-bezier(.16, .84, .24, 1);
+  --ent-soft: cubic-bezier(.22, 1, .36, 1);
+  --ent-overshoot: cubic-bezier(.34, 1.46, .64, 1);
+  --ent-gravity: cubic-bezier(.36, 0, .78, .38);
+  --ent-swing: cubic-bezier(.45, .05, .55, .95);
+  /* The house curve: the first frames barely move, then more than half the
+     duration is spent covering the last of the distance. */
+  --ent-rise: cubic-bezier(.62, .02, .14, 1);
+}
+.kc-ent-layer { will-change: transform, opacity; backface-visibility: hidden; }
+
+/* Overlay lifetime. Every entrance holds still on its composed frame, and only
+   then does the veil cross-fade away, so the reveal ends on stillness rather
+   than on movement. Delay and duration are set per entrance in JS. */
+@keyframes kc-ent-veil-out {
+  0%   { opacity: 1; }
+  100% { opacity: 0; visibility: hidden; }
+}
+.kc-ent-veil {
+  animation: kc-ent-veil-out var(--ent-fade, 420ms) var(--ent-fade-delay, 1200ms)
+    var(--ent-soft) forwards;
+}
+
+/* The composed title block every entrance hands the eye to. Small overshoot
+   and recovery rather than a freeze on the final frame. */
+@keyframes kc-ent-compose {
+  0%   { opacity: 0; transform: translate3d(0, 14px, 0) scale(.965); }
+  70%  { opacity: 1; transform: translate3d(0, 0, 0) scale(1.014); }
+  100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+.kc-ent-compose {
+  animation: kc-ent-compose var(--ent-compose-dur, 720ms) var(--ent-delay, 0ms)
+    var(--ent-overshoot) both;
+}
+
+
+/* ---- Envelope: flap catches light, casts a shadow, card lifts out ---- */
+@keyframes kc-ent-flap {
+  0%   { transform: rotateX(0deg); }
+  55%  { transform: rotateX(-172deg); }
+  75%  { transform: rotateX(-176deg); }
+  100% { transform: rotateX(-180deg); }
+}
+@keyframes kc-ent-flap-shadow {
+  0%   { opacity: 0; transform: scaleY(.2); }
+  45%  { opacity: .5; transform: scaleY(1); }
+  100% { opacity: 0; transform: scaleY(1.06); }
+}
+@keyframes kc-ent-sheen {
+  0%   { opacity: 0; transform: translate3d(-130%, 0, 0) skewX(-18deg); }
+  35%  { opacity: .55; }
+  100% { opacity: 0; transform: translate3d(130%, 0, 0) skewX(-18deg); }
+}
+@keyframes kc-ent-lift {
+  0%   { opacity: 0; transform: translate3d(0, 8%, 0) scale(.93); }
+  40%  { opacity: 1; }
+  78%  { transform: translate3d(0, -64%, 0) scale(1.015); }
+  100% { opacity: 1; transform: translate3d(0, -62%, 0) scale(1); }
+}
+
+/* ---- Paper airplane: banked, curved flight, nested axes ---- */
+@keyframes kc-ent-plane-x {
+  0%   { transform: translate3d(-62vw, 0, 0); }
+  100% { transform: translate3d(4vw, 0, 0); }
+}
+@keyframes kc-ent-plane-y {
+  0%   { transform: translate3d(0, -26vh, 0); }
+  55%  { transform: translate3d(0, 4vh, 0); }
+  100% { transform: translate3d(0, -1vh, 0); }
+}
+@keyframes kc-ent-plane-bank {
+  0%   { transform: rotate(-26deg) scale(.7); opacity: 0; }
+  18%  { opacity: 1; }
+  60%  { transform: rotate(14deg) scale(1); }
+  85%  { transform: rotate(-4deg) scale(1.05); opacity: 1; }
+  100% { transform: rotate(0deg) scale(1.35); opacity: 0; }
+}
+
+/* ---- Confetti: gravity on the fall, flutter and tumble on the piece ---- */
+@keyframes kc-ent-conf-fall {
+  0%   { transform: translate3d(0, -16vh, 0); }
+  100% { transform: translate3d(0, 108vh, 0); }
+}
+@keyframes kc-ent-conf-flutter {
+  0%   { transform: translate3d(0, 0, 0) rotate(0deg); opacity: 0; }
+  12%  { opacity: 1; }
+  50%  { transform: translate3d(var(--ent-drift, 12px), 0, 0) rotate(calc(var(--ent-spin, 240deg) * .5)); }
+  85%  { opacity: 1; }
+  100% { transform: translate3d(calc(var(--ent-drift, 12px) * -1), 0, 0) rotate(var(--ent-spin, 240deg)); opacity: 0; }
+}
+
+/* ---- Curtain: weight, drape and a sway before the part ---- */
+@keyframes kc-ent-curtain-left {
+  0%   { transform: translate3d(0, 0, 0); }
+  18%  { transform: translate3d(1.4%, 0, 0); }
+  100% { transform: translate3d(-101%, 0, 0); }
+}
+@keyframes kc-ent-curtain-right {
+  0%   { transform: translate3d(0, 0, 0); }
+  18%  { transform: translate3d(-1.4%, 0, 0); }
+  100% { transform: translate3d(101%, 0, 0); }
+}
+@keyframes kc-ent-drape-sway {
+  0%   { transform: skewY(0deg); }
+  30%  { transform: skewY(var(--ent-sway, .5deg)); }
+  100% { transform: skewY(0deg); }
+}
+
+/* ---- Fireworks: shell rises, bursts, sparks fall and fade ---- */
+@keyframes kc-ent-shell {
+  0%   { opacity: 0; transform: translate3d(0, 26vh, 0) scale(.4); }
+  25%  { opacity: 1; }
+  100% { opacity: 0; transform: translate3d(0, 0, 0) scale(.9); }
+}
+@keyframes kc-ent-burst {
+  0%   { opacity: 0; transform: scale(.15); }
+  22%  { opacity: 1; transform: scale(1.06); }
+  60%  { opacity: .55; transform: scale(1.2); }
+  100% { opacity: 0; transform: scale(1.28); }
+}
+@keyframes kc-ent-spark {
+  0%   { opacity: 0; transform: translate3d(0, 0, 0) scale(.4); }
+  15%  { opacity: 1; transform: translate3d(var(--ent-sx, 30px), var(--ent-sy, -30px), 0) scale(1); }
+  100% { opacity: 0; transform: translate3d(calc(var(--ent-sx, 30px) * 1.5), calc(var(--ent-sy, -30px) * .4 + 60px), 0) scale(.5); }
+}
+
+/* ---- Balloons: varied ascent, drift, string swing ---- */
+@keyframes kc-ent-balloon-rise {
+  0%   { opacity: 0; transform: translate3d(0, 22vh, 0); }
+  14%  { opacity: 1; }
+  88%  { opacity: 1; }
+  100% { opacity: 0; transform: translate3d(var(--ent-drift, 10px), -104vh, 0); }
+}
+@keyframes kc-ent-balloon-swing {
+  0%   { transform: rotate(calc(var(--ent-sway, 5deg) * -1)); }
+  50%  { transform: rotate(var(--ent-sway, 5deg)); }
+  100% { transform: rotate(calc(var(--ent-sway, 5deg) * -.4)); }
+}
+
+/* ---- Bouquet: stems rise, blooms unfurl, petals land with weight ---- */
+@keyframes kc-ent-stem-rise {
+  0%   { opacity: 0; transform: translate3d(0, 26px, 0) scaleY(.62); }
+  100% { opacity: .9; transform: translate3d(0, 0, 0) scaleY(1); }
+}
+@keyframes kc-ent-bloom-open {
+  0%   { opacity: 0; transform: scale(.42); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes kc-ent-petal-unfurl {
+  0%   { opacity: 0; transform: rotate(var(--ent-petal, 0deg)) translateY(6px) scale(.34); }
+  70%  { opacity: 1; transform: rotate(var(--ent-petal, 0deg)) translateY(-1px) scale(1.03); }
+  100% { opacity: 1; transform: rotate(var(--ent-petal, 0deg)) translateY(0) scale(1); }
+}
+@keyframes kc-ent-bloom-heart {
+  0%   { opacity: 0; transform: scale(.3); }
+  100% { opacity: .95; transform: scale(1); }
+}
+
+
+/* ---- Lightning: one bright flash, a weaker second, light settles ---- */
+@keyframes kc-ent-dark {
+  0%   { opacity: .94; }
+  62%  { opacity: .55; }
+  100% { opacity: 0; }
+}
+@keyframes kc-ent-flash {
+  0%, 12%  { opacity: 0; }
+  15%      { opacity: .92; }
+  22%      { opacity: .04; }
+  40%      { opacity: 0; }
+  46%      { opacity: .34; }
+  54%, 100%{ opacity: 0; }
+}
+@keyframes kc-ent-bolt {
+  0%, 12%  { opacity: 0; transform: translate3d(0, -6%, 0) scaleY(.5); }
+  16%      { opacity: 1; transform: translate3d(0, 0, 0) scaleY(1); }
+  24%      { opacity: 0; }
+  45%      { opacity: .45; }
+  52%, 100%{ opacity: 0; }
+}
+@keyframes kc-ent-throw-shadow {
+  0%, 12%  { opacity: 0; transform: translate3d(0, 0, 0) scaleX(1); }
+  16%      { opacity: .55; transform: translate3d(6%, 2%, 0) scaleX(1.1); }
+  30%      { opacity: .12; }
+  46%      { opacity: .28; transform: translate3d(-4%, 1%, 0) scaleX(1.04); }
+  100%     { opacity: 0; transform: translate3d(0, 0, 0) scaleX(1); }
+}
+
+/* ---- Dark to light: dawn reveal, colour rising ---- */
+@keyframes kc-ent-dawn-dark {
+  0%   { opacity: 1; }
+  55%  { opacity: .38; }
+  100% { opacity: 0; }
+}
+@keyframes kc-ent-dawn-glow {
+  0%   { opacity: 0; transform: translate3d(0, 24%, 0) scale(.6); }
+  55%  { opacity: .85; transform: translate3d(0, 2%, 0) scale(1.04); }
+  100% { opacity: .18; transform: translate3d(0, 0, 0) scale(1.16); }
+}
+@keyframes kc-ent-dawn-card {
+  0%   { opacity: 0; transform: translate3d(0, 20px, 0) scale(.96); filter: brightness(.32) saturate(.25); }
+  60%  { opacity: 1; transform: translate3d(0, 0, 0) scale(1.012); filter: brightness(1.04) saturate(1.02); }
+  100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); filter: brightness(1) saturate(1); }
+}
+
+/* ---- Sparkle: layered bloom with overshoot ---- */
+@keyframes kc-ent-sparkle {
+  0%   { opacity: 0; transform: scale(0) rotate(0deg); }
+  45%  { opacity: 1; transform: scale(1.1) rotate(45deg); }
+  70%  { transform: scale(.95) rotate(60deg); }
+  100% { opacity: 0; transform: scale(.5) rotate(90deg); }
+}
+
+/* Reduced motion: a single gentle fade, no travel, no particles. */
+@media (prefers-reduced-motion: reduce) {
+  .kc-ent-veil { animation: kc-ent-veil-out 520ms 320ms ease-out forwards; }
+  .kc-ent-layer { animation: none !important; }
+}
+
+
+/* Slow, organic color aura drift behind hero sections */
+@keyframes aura-drift {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50%      { transform: translate3d(3%, -4%, 0) scale(1.08); }
+}
+@keyframes aura-drift-slow {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1.05); }
+  50%      { transform: translate3d(-4%, 3%, 0) scale(1); }
+}
+.animate-aura-drift      { animation: aura-drift 18s ease-in-out infinite; }
+.animate-aura-drift-slow { animation: aura-drift-slow 24s ease-in-out infinite; }
+
+/* Micro-interactions: success pop, gentle check-in, hover ripple */
+@keyframes success-pop {
+  0%   { transform: scale(0.6); opacity: 0; }
+  55%  { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes check-fade {
+  0%   { transform: scale(0.4); opacity: 0; }
+  70%  { transform: scale(1.1); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes soft-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--velvet) 25%, transparent); }
+  50%      { box-shadow: 0 0 0 8px color-mix(in oklab, var(--velvet) 0%, transparent); }
+}
+.animate-success-pop { animation: success-pop 0.45s cubic-bezier(.2,.7,.2,1) both; }
+.animate-check-fade  { animation: check-fade 0.35s ease-out both; }
+.animate-soft-pulse  { animation: soft-pulse 1.6s ease-in-out infinite; }
+
+/* Smooth transitions on interactive elements sitewide */
+button, a, input, select, textarea { transition-property: color, background-color, border-color, box-shadow, transform, opacity; transition-duration: 180ms; transition-timing-function: ease-out; }
+
+/* Print-friendly for run-of-show and seating chart */
+@media print {
+  nav, footer, .no-print { display: none !important; }
+  body { background: #fff !important; color: #000 !important; }
+  a { color: inherit !important; text-decoration: none !important; }
+}
+
+/* Focus-visible outlines for accessibility */
+:focus-visible { outline: 2px solid var(--velvet); outline-offset: 2px; border-radius: 6px; }
+
+/* High-contrast mode: elderly / low-vision users */
+html.high-contrast {
+  --muted-foreground: var(--foreground);
+  --border: color-mix(in oklab, var(--foreground) 55%, transparent);
+}
+html.high-contrast :focus-visible { outline-width: 3px; }
+html.high-contrast a:not([class*="btn"]):not([role="button"]) { text-decoration: underline; text-underline-offset: 2px; }
+html.high-contrast .text-muted-foreground { color: var(--foreground) !important; }
+html.high-contrast input,
+html.high-contrast textarea,
+html.high-contrast select { border-color: var(--foreground) !important; }
+
+/* Mobile safety: prevent stray decorative elements or wide grids from
+   causing horizontal scroll on phone widths. Individual sections that
+   need horizontal scroll (e.g. tables) opt in with overflow-x-auto. */
+/* Use clip, not hidden: overflow-x: hidden turns the document into a scroll
+   container and silently breaks `position: sticky` on the site header. */
+html, body { overflow-x: clip; max-width: 100vw; }
+
+/* Long unbreakable strings (emails, URLs, slugs) — allow them to wrap
+   anywhere so they never push their container past the viewport. */
+@utility break-anywhere {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+
+
+
+
+
+/* Group eCards (Venture 02) — reveal animations. */
+@keyframes ecard-fade-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes ecard-slide-in {
+  from { opacity: 0; transform: translateY(24px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.ecard-fade { animation: ecard-fade-in 600ms ease-out both; }
+.ecard-slide { animation: ecard-slide-in 620ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* Reveal delight: unfold entrance, montage cross-fade, Ken Burns, confetti. */
+@keyframes ecard-unfold {
+  0% { opacity: 0; transform: perspective(1400px) rotateX(-78deg) translateY(28px); transform-origin: top center; }
+  60% { opacity: 1; transform: perspective(1400px) rotateX(6deg) translateY(0); }
+  100% { opacity: 1; transform: perspective(1400px) rotateX(0deg); }
+}
+@keyframes ecard-crossfade-in {
+  from { opacity: 0; transform: scale(1.015); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes ecard-kenburns-drift {
+  from { transform: scale(1.02) translate3d(0, 0, 0); }
+  to { transform: scale(1.14) translate3d(-1.5%, -2%, 0); }
+}
+@keyframes ecard-confetti-fall {
+  0% { opacity: 0; transform: translate3d(0, -12vh, 0) rotate(0deg); }
+  10% { opacity: 1; }
+  100% { opacity: 0; transform: translate3d(4vw, 105vh, 0) rotate(720deg); }
+}
+.ecard-unfold { animation: ecard-unfold 1100ms cubic-bezier(0.22, 1, 0.36, 1) both; backface-visibility: hidden; }
+.ecard-crossfade { animation: ecard-crossfade-in 780ms ease-out both; }
+.ecard-kenburns { animation: ecard-kenburns-drift 9s ease-out both; will-change: transform; }
+.ecard-confetti-layer {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 60;
+}
+.ecard-confetti-piece {
+  position: absolute;
+  top: 0;
+  border-radius: 2px;
+  animation-name: ecard-confetti-fall;
+  animation-timing-function: cubic-bezier(0.3, 0.1, 0.6, 1);
+  animation-fill-mode: both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ecard-fade, .ecard-slide, .ecard-unfold, .ecard-crossfade, .ecard-kenburns { animation: none; }
+  .ecard-confetti-layer { display: none; }
+}
+
+
+/* Legibility safety net: light surface inputs must never inherit a light text
+   color from a themed parent (eCard themes set color on their card wrapper). */
+input.bg-paper,
+input.bg-secondary,
+textarea.bg-paper,
+textarea.bg-secondary,
+select.bg-paper,
+select.bg-secondary {
+  color: var(--ink);
+}
+input.bg-paper::placeholder,
+input.bg-secondary::placeholder,
+textarea.bg-paper::placeholder,
+textarea.bg-secondary::placeholder {
+  color: color-mix(in oklab, var(--ink) 55%, transparent);
+}
+
+/* Touch comfort: on phones every real text control gets a 16px font (which stops
+   iOS from zooming the page on focus) and a 44px minimum height, so novice and
+   elderly users can hit and read every field. Toggles, sliders, color pickers
+   and anything explicitly opted out with data-compact keep their own size. */
+@media (max-width: 640px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="hidden"]):not([data-compact]),
+  select:not([data-compact]),
+  textarea:not([data-compact]) {
+    font-size: 16px;
+    line-height: 1.4;
+    min-height: 44px;
+  }
+  textarea:not([data-compact]) {
+    min-height: 88px;
+  }
+}
+
+
+
+/* Hide floating mobile buttons while the mobile nav drawer is open. */
+html[data-mobile-menu="open"] [data-mobile-fab],
+html[data-mobile-menu="open"] [data-mobile-chat] {
+  display: none;
+}
+
+/* Shepherd guided tour, dressed in the Kenroe palette instead of the
+   library's default blue-on-white system look. */
+.shepherd-element.kc-tour {
+  max-width: min(22rem, calc(100vw - 2rem));
+  border-radius: var(--radius-xl);
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid color-mix(in oklab, var(--ink) 12%, transparent);
+  box-shadow: 0 24px 60px -24px color-mix(in oklab, var(--ink) 45%, transparent);
+}
+.shepherd-element.kc-tour .shepherd-header {
+  background: transparent;
+  padding: 1rem 1.25rem 0;
+}
+.shepherd-element.kc-tour .shepherd-title {
+  font-family: var(--font-display, inherit);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+.shepherd-element.kc-tour .shepherd-text {
+  padding: 0.5rem 1.25rem 0;
+  font-size: 0.875rem;
+  line-height: 1.55;
+  color: color-mix(in oklab, var(--ink) 72%, transparent);
+}
+.shepherd-element.kc-tour .shepherd-footer {
+  padding: 1rem 1.25rem 1.25rem;
+  gap: 0.5rem;
+}
+.shepherd-element.kc-tour .shepherd-button {
+  border-radius: 9999px;
+  padding: 0.5rem 1.1rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  background: var(--velvet);
+  color: var(--paper);
+}
+.shepherd-element.kc-tour .shepherd-button:hover:not(:disabled) {
+  background: var(--velvet-deep);
+}
+.shepherd-element.kc-tour .shepherd-button.shepherd-button-secondary {
+  background: transparent;
+  color: color-mix(in oklab, var(--ink) 62%, transparent);
+  border: 1px solid color-mix(in oklab, var(--ink) 14%, transparent);
+}
+.shepherd-element.kc-tour .shepherd-cancel-icon {
+  color: color-mix(in oklab, var(--ink) 45%, transparent);
+}
+.shepherd-element.kc-tour .shepherd-arrow::before {
+  background: var(--paper);
+  border: 1px solid color-mix(in oklab, var(--ink) 12%, transparent);
+}
+.shepherd-modal-overlay-container {
+  opacity: 0.55;
+}
+
+/* Photo Wall TV mode: slow Ken Burns drift so a static photo still feels alive
+   on a big screen. Respects reduced-motion. */
+@keyframes wall-kenburns {
+  0%   { transform: scale(1) translate3d(0, 0, 0); }
+  100% { transform: scale(1.08) translate3d(-1.5%, -1%, 0); }
+}
+.wall-kenburns {
+  animation: wall-kenburns 9s ease-out forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .wall-kenburns { animation: none; }
+}

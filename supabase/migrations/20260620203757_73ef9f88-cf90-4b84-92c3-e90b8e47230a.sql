@@ -1,0 +1,1 @@
+ALTER TABLE public.ai_packages ADD COLUMN IF NOT EXISTS attachments jsonb NOT NULL DEFAULT '[]'::jsonb;

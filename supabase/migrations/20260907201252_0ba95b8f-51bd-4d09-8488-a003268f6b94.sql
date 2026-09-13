@@ -1,0 +1,1 @@
+REVOKE ALL ON FUNCTION public.sound_pieces_flag_demo() FROM PUBLIC, anon, authenticated;

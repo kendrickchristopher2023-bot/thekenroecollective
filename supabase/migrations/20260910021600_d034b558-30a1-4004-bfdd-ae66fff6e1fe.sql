@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.profile_entitlements_unchanged(uuid, text, boolean, timestamptz, boolean, boolean, boolean, boolean) FROM anon;
