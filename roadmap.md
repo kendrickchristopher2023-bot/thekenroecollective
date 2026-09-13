@@ -191,3 +191,4 @@ demo owners excluded from eCard crons, error alerts, and owner report counts.
 - [x] AK upright: a04 header fully in; a06 label dropped on upright; re-rendered, audited, uploaded (13 Sep 01:53)
 - [x] Re-uploaded six films as video/mp4 (same bytes, sizes verified); deleted analyze_frames.py (13 Sep 02:03)
 - [x] Complete US English sweep across visible UI, templates, AI writing prompts, ventures, updates, legal copy, and demo data; preserve customer words and locked showcase except the approved Bishop message.
+- [ ] Finish missed US English wording, persist the Workroom demo board corrections through reset, re-record the board, render and audit both Workroom v2 cuts, then upload v2 films and posters without changing homepage config.

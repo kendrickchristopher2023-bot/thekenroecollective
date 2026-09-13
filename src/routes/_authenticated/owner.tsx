@@ -798,7 +798,7 @@ function RefundWordingCard() {
     <div className="mt-4 rounded-2xl bg-card p-4 ring-1 ring-ink/5">
       <h3 className="font-serif text-lg">Refund wording for composed pieces</h3>
       <p className="mt-1 text-xs text-muted-foreground">
-        Shown on the pay screen with a tick box, and on the refund policy page. Leave a blank line
+        Shown on the pay screen with a checkbox, and on the refund policy page. Leave a blank line
         between points. {updatedAt ? `Last changed ${new Date(updatedAt).toLocaleString()}.` : ""}
       </p>
       <label className="mt-3 block text-xs font-medium text-muted-foreground">Headline</label>
@@ -1172,7 +1172,7 @@ function DigitalCardsCard() {
                       </span>
                     ) : card.published ? null : (
                       <span className="block text-[11px] text-muted-foreground">
-                        Ready to go live. Nobody can see this card until you tick the box.
+                        Ready to go live. Nobody can see this card until you check the box.
                       </span>
                     )}
                   </span>
