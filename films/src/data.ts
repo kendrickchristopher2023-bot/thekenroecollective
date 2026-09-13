@@ -14,14 +14,14 @@ export const FILMS: Record<FilmKey, FilmData> = {
   celebrations: {
     key:"celebrations", title:"Celebrations", duration:timelineJson.filmDurations.c, bed:"bed-celebrations.mp3", lines:lines("c"),
     scenes:[
-      {lineId:"c01",file:"c-live-invite.webm",from:10.94,fit:"cover"},
-      {lineId:"c02",file:"c-live-invite.webm",from:12.44,fit:"cover"},
-      {lineId:"c03",file:"c-live-invite.webm",from:15.93,fit:"cover"},
+      {lineId:"c01",file:"c-invite-1.mp4",from:0,fit:"cover"},
+      {lineId:"c02",file:"c-invite-2.mp4",from:0,fit:"cover"},
+      {lineId:"c03",file:"c-invite-3.mp4",from:0,fit:"cover"},
       {lineId:"c04",file:"c-live-host.webm",from:8.8,crop:{horizontal:{x:50,y:61,scale:1.2}},verticalCardImage:"footage/c-host-v.jpg",card:{width:0,verticalWidth:1000}},
       {lineId:"c05",file:"c-live-example.webm",from:7.5,fit:"cover"},
       {lineId:"c06",file:"c-live-wall.webm",from:7.0,leadImage:"footage/c-family-celebration.jpg",leadImageSeconds:2.35,verticalCardImage:"footage/c-wall-v.jpg",card:{width:0,verticalWidth:1000}},
       {lineId:"c07",image:"footage/print-live/cards.png",fit:"contain",crop:{vertical:{x:50,y:50,scale:1}}},
-      {lineId:"c08",file:"f1-ecard-reveal-crop.webm",from:5,fit:"cover"},
+      {lineId:"c08",file:"c-groupcard.mp4",from:0,fit:"contain"},
       {lineId:"c09",file:"f1-studio.webm",from:6,image:"footage/c-studio-h.jpg",verticalCardImage:"footage/c-studio-v.jpg",card:{width:1200,verticalWidth:1000},label:"Kenroe Sound Studio | Coming soon"},
       {lineId:"c10"},
     ], actions:["See a finished example","Start your event"],
