@@ -944,7 +944,7 @@ async function polishSongPrompt(
     const { generateText } = await import("ai");
     const gateway = createLovableAiGatewayProvider(key);
     const { text } = await generateText({
-      model: gateway("google/gemini-3.6-flash"),
+      model: gateway("google/gemini-3.7-flash"),
       system:
         kind === "poem"
           ? "You write prompts for a music model that can perform spoken word over music. Use American English spelling. Rewrite the request as clear direction for a spoken performance: the speaking voice, its pace and warmth, and a sparse instrumental bed sitting well under the voice. If exact words to be read are given, repeat them verbatim at the end under the line 'Words to read:' and change nothing in them, not a single word or name. No headings otherwise. Reply with the prompt only."
@@ -1013,7 +1013,7 @@ export const draftWallSongWords = createServerFn({ method: "POST" })
     let text = "";
     try {
       const res = await generateText({
-        model: gateway("google/gemini-3.6-flash"),
+        model: gateway("google/gemini-3.7-flash"),
         system,
         prompt: lines.join("\n"),
       });
