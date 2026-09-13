@@ -23,12 +23,14 @@ let cachedShowcaseUserId: string | null | undefined;
 
 async function findUserIdByEmail(email: string): Promise<string | null> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data: list } = await (supabaseAdmin.auth.admin as any).listUsers({ page: 1, perPage: 200 });
+  const { data: list, error } = await (supabaseAdmin.auth.admin as any).listUsers({ page: 1, perPage: 200 });
+  if (error) throw new Error(error.message ?? "listUsers failed");
   const match = (list?.users ?? []).find(
     (u: { id: string; email?: string | null }) => (u.email ?? "").toLowerCase() === email,
   );
   return match?.id ?? null;
 }
+
 
 /** Resolve the demo host user id (memoised for the worker's lifetime). */
 export async function getDemoUserId(): Promise<string | null> {
