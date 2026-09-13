@@ -59,8 +59,9 @@ const voiceVolume = (frame: number, durationFrames: number, fps: number) => {
 
 const bedVolume = (frame: number, film: FilmData, fps: number) => {
   const time = frame / fps;
-  const base = 0.075;
-  const ducked = base * Math.pow(10, -6 / 20);
+  // Each film carries its own bed gain and duck depth; the defaults are the values the approved Workroom and Application Kit cuts used.
+  const base = film.bedGain ?? 0.075;
+  const ducked = base * Math.pow(10, -(film.bedDuckDb ?? 6) / 20);
   const ramp = 0.25;
   let level = base;
   for (const line of film.lines) {
@@ -69,9 +70,9 @@ const bedVolume = (frame: number, film: FilmData, fps: number) => {
     const release = interpolate(time, [line.captionEnd, line.captionEnd + ramp], [ducked, base], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
     level = Math.min(level, attack, release);
   }
-  const opening = interpolate(time, [0, 1], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const opening = interpolate(time, [0, film.bedOpenSeconds ?? 1], [0, 1], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   const endCardStart = film.lines.at(-1)?.start ?? Math.max(0, film.duration - 2);
-  const closing = interpolate(time, [endCardStart, film.duration], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
+  const closing = interpolate(time, [endCardStart, film.bedEnd ?? film.duration], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   return level * opening * closing;
 };
 

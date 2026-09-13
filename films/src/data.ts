@@ -5,24 +5,24 @@ export type Cut = "horizontal" | "vertical";
 export type Line = { id:string; text:string; file:string; start:number; duration:number; captionEnd:number; sceneEnd:number; breathAfter:number; wpm:number; scene:string };
 export type Crop = { x:number; y:number; scale:number };
 export type Scene = { lineId:string; file?:string; portraitFile?:string; image?:string; leadImage?:string; leadImageSeconds?:number; leadImageVerticalOnly?:boolean; start?:number; from?:number; portraitFrom?:number; rate?:number; fit?:"cover"|"contain"; crop?:{horizontal?:Crop;vertical?:Crop}; card?:{width:number;verticalWidth:number;verticalImage?:string}; verticalCardImage?:string; label?:string; hideLabelVertical?:boolean };
-export type FilmData = { key:FilmKey; title:string; duration:number; bed:string; lines:Line[]; scenes:Scene[]; status?:string; actions:string[] };
+export type FilmData = { key:FilmKey; title:string; duration:number; bed:string; bedGain?:number; bedDuckDb?:number; bedOpenSeconds?:number; bedEnd?:number; lines:Line[]; scenes:Scene[]; status?:string; actions:string[] };
 export const DISCLOSURE = "All people, names and details shown are fictional.";
 const all = timelineJson.lines as Line[];
 const lines = (prefix:string) => all.filter((line)=>line.id.startsWith(prefix));
 
 export const FILMS: Record<FilmKey, FilmData> = {
   celebrations: {
-    key:"celebrations", title:"Celebrations", duration:timelineJson.filmDurations.c, bed:"bed-celebrations.mp3", lines:lines("c"),
+    key:"celebrations", title:"Celebrations", duration:timelineJson.filmDurations.c, bed:"bed-celebrations-v3.wav", bedGain:0.115, bedDuckDb:3, bedOpenSeconds:0.6, bedEnd:56.2, lines:lines("c"),
     scenes:[
       {lineId:"c01",file:"c-invite-1.mp4",from:0,fit:"cover"},
       {lineId:"c02",file:"c-invite-2.mp4",from:0,fit:"cover"},
       {lineId:"c03",file:"c-invite-3.mp4",from:0,fit:"cover"},
       {lineId:"c04",file:"c-live-host.webm",from:8.8,crop:{horizontal:{x:50,y:61,scale:1.2}},verticalCardImage:"footage/c-host-v.jpg",card:{width:0,verticalWidth:1000}},
       {lineId:"c05",file:"c-live-example.webm",from:7.5,fit:"cover"},
-      {lineId:"c06",file:"c-live-wall.webm",from:7.0,leadImage:"footage/c-family-celebration.jpg",leadImageSeconds:2.35,verticalCardImage:"footage/c-wall-v.jpg",card:{width:0,verticalWidth:1000}},
+      {lineId:"c06",file:"c-live-wall.webm",from:7.0,leadImage:"footage/c-family-celebration-v3.jpg",leadImageSeconds:2.35,verticalCardImage:"footage/c-wall-v.jpg",card:{width:0,verticalWidth:1000}},
       {lineId:"c07",image:"footage/print-live/cards.png",fit:"contain",crop:{vertical:{x:50,y:50,scale:1}}},
-      {lineId:"c08",file:"c-groupcard.mp4",from:0,fit:"contain"},
-      {lineId:"c09",file:"f1-studio.webm",from:6,image:"footage/c-studio-h.jpg",verticalCardImage:"footage/c-studio-v.jpg",card:{width:1200,verticalWidth:1000},label:"Kenroe Sound Studio | Coming soon"},
+      {lineId:"c08",file:"c-ecard-reveal.mp4",from:0,fit:"cover"},
+      {lineId:"c09",image:"footage/c-studio-panel.png",card:{width:1240,verticalWidth:1000},label:"Kenroe Sound Studio | Coming soon"},
       {lineId:"c10"},
     ], actions:["See a finished example","Start your event"],
   },
