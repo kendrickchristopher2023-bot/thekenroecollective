@@ -1527,6 +1527,51 @@ export const getPieceAudioUrl = createServerFn({ method: "POST" })
     return { url: await audioUrl(piece.storage_path, piece.storage_bucket) };
   });
 
+/**
+ * Copy one of my saved songs into the public invitation media bucket and
+ * return its public URL, so it can become an event's invitation song.
+ *
+ * The copy happens entirely server-side from a piece the caller already owns,
+ * so no bytes travel up from the browser. That is why this does not go through
+ * the device-upload path: nothing new is being introduced, and the demo host
+ * needs to be able to swap songs on demo events.
+ */
+export const publishPieceForInvite = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) =>
+    parseInput(nullSafe(z.object({ id: z.string().uuid() })), i, "input"),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: row } = await context.supabase
+      .from("sound_pieces")
+      .select("storage_path, storage_bucket, kind, title")
+      .eq("id", data.id)
+      .eq("user_id", context.userId)
+      .is("removed_at", null)
+      .maybeSingle();
+    if (!row) throw new Error("That song can't be found.");
+    const piece = row as {
+      storage_path: string;
+      storage_bucket: string;
+      kind: string;
+      title: string;
+    };
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const download = await supabaseAdmin.storage
+      .from(piece.storage_bucket)
+      .download(piece.storage_path);
+    if (download.error || !download.data) throw new Error("That song could not be read.");
+    const bytes = new Uint8Array(await download.data.arrayBuffer());
+    const path = `invite-songs/${context.userId}/${data.id}.mp3`;
+    const upload = await supabaseAdmin.storage
+      .from("atelier-shared")
+      .upload(path, bytes, { contentType: "audio/mpeg", upsert: true });
+    if (upload.error) throw new Error("That song could not be prepared for the invitation.");
+    const { data: pub } = supabaseAdmin.storage.from("atelier-shared").getPublicUrl(path);
+    if (!pub?.publicUrl) throw new Error("That song could not be prepared for the invitation.");
+    return { url: `${pub.publicUrl}?v=${Date.now()}`, title: piece.title };
+  });
+
 /** Attach a piece to one of my Group eCards, or clear it. */
 export const attachPieceToEcard = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
