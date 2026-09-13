@@ -56,10 +56,13 @@ export async function getShowcaseUserId(): Promise<string | null> {
   try {
     cachedShowcaseUserId = await findUserIdByEmail(SHOWCASE_SYSTEM_EMAIL);
   } catch {
-    cachedShowcaseUserId = null;
+    // Lookup failed (not "absent"), so do not remember the miss for the
+    // worker's lifetime: the next call retries.
+    return null;
   }
   return cachedShowcaseUserId ?? null;
 }
+
 
 /**
  * The showcase's own account. Nobody can sign into it: it is created without a
