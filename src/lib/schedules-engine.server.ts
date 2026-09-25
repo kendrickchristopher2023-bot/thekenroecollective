@@ -263,7 +263,8 @@ export async function runTick(
         let body = renderTemplate((st as any).body, values);
         if (!person.first_sms_sent_at) body = complianceIntro(info.host) + body + STOP_LINE;
         body = body.slice(0, 480);
-        if (dryRun) { await mark("dry_run"); continue; }
+        // A dry run counts toward the daily cap too, so it predicts real holds.
+        if (dryRun) { smsToday.set(s.owner_user_id, used + 1); await mark("dry_run"); continue; }
         const { data: ob, error: obErr } = await admin
           .from("sms_outbox")
           .insert({ user_id: s.owner_user_id, to_phone: c.phone, guest_name: c.display_name ?? null, body, status: "pending" })

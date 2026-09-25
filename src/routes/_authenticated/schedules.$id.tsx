@@ -84,6 +84,7 @@ function ScheduleEditor() {
   const [data, setData] = useState<any | null>(null);
   const [canUse, setCanUse] = useState<boolean | null>(null);
   const [isOwner, setIsOwner] = useState(false);
+  const [isDemo, setIsDemo] = useState(false);
   const [tab, setTab] = useState<Tab>("details");
   const [error, setError] = useState<string | null>(null);
 
@@ -97,7 +98,7 @@ function ScheduleEditor() {
   }, [id, isNew, load]);
 
   useEffect(() => {
-    void access().then((a) => { setCanUse(a.canUse); setIsOwner(a.isOwner); }).catch(() => setCanUse(false));
+    void access().then((a) => { setCanUse(a.canUse); setIsOwner(a.isOwner); setIsDemo(!!a.isDemo); }).catch(() => setCanUse(false));
     void refresh();
   }, [access, refresh]);
 
@@ -137,12 +138,12 @@ function ScheduleEditor() {
               initial={isNew ? null : data.schedule}
               disabled={canUse === false && isNew}
               onSaved={(newId) => {
-                if (isNew) navigate({ to: "/schedules/$id", params: { id: newId } });
+                if (isNew || newId !== id) { navigate({ to: "/schedules/$id", params: { id: newId } }); if (!isNew) toast.message("You are now on the new part of the series."); }
                 else void refresh();
               }}
             />
           ) : null}
-          {data && tab === "people" ? <PeoplePanel scheduleId={id} people={data.people} onChange={refresh} /> : null}
+          {data && tab === "people" ? <PeoplePanel scheduleId={id} people={data.people} isDemo={isDemo} onChange={refresh} /> : null}
           {data && tab === "reminders" ? <RemindersPanel scheduleId={id} steps={data.steps} problems={data.problems} people={data.people} onChange={refresh} /> : null}
           {data && tab === "upcoming" ? <UpcomingPanel data={data} onChange={refresh} /> : null}
         </div>
@@ -357,7 +358,7 @@ function DetailsForm({ initial, disabled, onSaved }: { initial: any | null; disa
 
 // ---------------- People ----------------
 
-function PeoplePanel({ scheduleId, people, onChange }: { scheduleId: string; people: any[]; onChange: () => void }) {
+function PeoplePanel({ scheduleId, people, isDemo, onChange }: { scheduleId: string; people: any[]; isDemo: boolean; onChange: () => void }) {
   const add = useServerFn(addPeople);
   const upd = useServerFn(updatePerson);
   const loadContacts = useServerFn(listMyContacts);
@@ -402,7 +403,7 @@ function PeoplePanel({ scheduleId, people, onChange }: { scheduleId: string; peo
           <button type="button" className={btn2} onClick={() => setShowImport((s) => !s)}>{showImport ? "Close import" : "Import from a file or photo"}</button>
         </div>
 
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        {showImport ? null : <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <label><span className={label}>How should they be reminded?</span>
             <select className={field} value={channel} onChange={(e) => setChannel(e.target.value as any)}>
               <option value="both">Email and text</option><option value="email">Email only</option><option value="sms">Text only</option>
@@ -414,11 +415,11 @@ function PeoplePanel({ scheduleId, people, onChange }: { scheduleId: string; peo
               <span>These people agreed to get text reminders from me. <span className="text-muted-foreground">Their first text says it is from you and how to reply STOP.</span></span>
             </label>
           ) : null}
-        </div>
+        </div>}
 
         {showImport ? (
           <div className="mt-6">
-            <ScheduleImport scheduleId={scheduleId} channel={channel} consent={consent} onDone={() => { setShowImport(false); onChange(); }} />
+            <ScheduleImport scheduleId={scheduleId} isDemo={isDemo} onDone={onChange} />
           </div>
         ) : (
           <>
