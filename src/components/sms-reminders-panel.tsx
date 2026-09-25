@@ -215,7 +215,7 @@ export function SmsRemindersPanel({ event, eventId }: Props) {
                 </div>
                 <span
                   className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] uppercase ${
-                    r.status === "sent"
+                    (r.status === "sent" || r.status === "delivered")
                       ? "bg-emerald-100 text-emerald-700"
                       : r.status === "failed"
                       ? "bg-red-100 text-red-700"
