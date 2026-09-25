@@ -126,7 +126,7 @@ function SendNowPanel({ scheduleId, people, onClose }: { scheduleId: string; peo
       const goes = (e?.go) || (s?.go && !(quietTexts && !atMorning));
       if (goes) reached++;
       else skippedPeople++;
-      for (const x of reasons) if (!["prefers_email", "prefers_text"].includes(x)) skipped[x] = (skipped[x] ?? 0) + 1;
+      for (const x of new Set(reasons)) if (!["prefers_email", "prefers_text"].includes(x)) skipped[x] = (skipped[x] ?? 0) + 1;
     }
     return { total: rows.length, texts, emails, skipped, skippedPeople, reached };
   }, [plan, atMorning]);
@@ -154,7 +154,7 @@ function SendNowPanel({ scheduleId, people, onClose }: { scheduleId: string; peo
       <div className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-t-3xl bg-card shadow-xl sm:rounded-3xl">
         <header className="flex items-center justify-between border-b border-ink/5 px-5 py-4 sm:px-7">
           <h2 id="send-now-title" className="font-serif text-xl">
-            {step === "compose" ? "Send a reminder now" : step === "confirm" ? "Ready to send?" : "Sent"}
+            {step === "compose" ? "Send a reminder now" : step === "confirm" ? "Ready to send?" : plan?.demo ? "Test run done" : "Sent"}
           </h2>
           <button type="button" className="rounded-full p-2 hover:bg-secondary" onClick={onClose} aria-label="Close" disabled={busy}><X className="h-5 w-5" /></button>
         </header>
@@ -314,7 +314,7 @@ function ResultsList({ results }: { results: { results: any[]; dateLabel: string
     <div className="space-y-5">
       <p className="text-sm text-muted-foreground">About {results.dateLabel}. This also shows in the schedule's history.</p>
       <section>
-        <h3 className="text-sm font-medium">Got it ({good.length})</h3>
+        <h3 className="text-sm font-semibold">Got it ({good.length})</h3>
         <ul className="mt-2 divide-y divide-ink/5 text-sm">
           {good.map((r, i) => <li key={i} className="flex justify-between gap-3 py-2"><span className="truncate">{r.name}, {r.channel === "sms" ? "text" : "email"}</span><span className="text-muted-foreground">{describe(r)}</span></li>)}
           {!good.length ? <li className="py-2 text-muted-foreground">Nobody.</li> : null}
@@ -322,7 +322,7 @@ function ResultsList({ results }: { results: { results: any[]; dateLabel: string
       </section>
       {bad.length ? (
         <section>
-          <h3 className="text-sm font-medium">Skipped ({bad.length})</h3>
+          <h3 className="text-sm font-semibold">Skipped ({bad.length})</h3>
           <ul className="mt-2 divide-y divide-ink/5 text-sm">
             {bad.map((r, i) => <li key={i} className="flex justify-between gap-3 py-2"><span className="truncate">{r.name}, {r.channel === "sms" ? "text" : "email"}</span><span className="text-right text-muted-foreground">{describe(r)}</span></li>)}
           </ul>

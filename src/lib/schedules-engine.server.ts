@@ -224,6 +224,13 @@ export async function deliverClaimed(args: {
   const info = await owners.info(s.owner_user_id);
   const used = owners.smsToday.get(s.owner_user_id) ?? 0;
   const g = guardFor({ schedule: s, person, channel, info, optedOut, smsUsed: used });
+  if (g?.reason === "demo") {
+    // Nothing is ever sent for demo. Record the real skip reason when there is
+    // one, so the demo shows what would really happen.
+    const would = guardFor({ schedule: { ...s, is_demo: false }, person, channel, info: { ...info, demo: false }, optedOut, smsUsed: used });
+    if (would && would.reason !== "plan_downgraded") return mark(would.status, would.reason);
+    return mark("dry_run", "demo");
+  }
   if (g) return mark(g.status, g.reason);
 
   const c = person.contact ?? {};
@@ -485,7 +492,11 @@ export async function manualSendPreview(admin: Admin, userClient: any, userId: s
       if (p.channel !== "both" && p.channel !== ch) return { go: false, reason: ch === "sms" ? "prefers_email" : "prefers_text" };
       const prior = recent.get(`${p.id}:${ch}`);
       if (prior) return { go: false, reason: "already_sent", minutesAgo: Math.max(0, Math.floor((now.getTime() - prior.getTime()) / 60_000)) };
-      const g = guardFor({ schedule: s, person: p, channel: ch, info, optedOut, smsUsed: used });
+      let g = guardFor({ schedule: s, person: p, channel: ch, info, optedOut, smsUsed: used });
+      if (g?.reason === "demo") {
+        const would = guardFor({ schedule: { ...s, is_demo: false }, person: p, channel: ch, info: { ...info, demo: false }, optedOut, smsUsed: used });
+        if (would && would.reason !== "plan_downgraded") g = would;
+      }
       if (g && g.status !== "dry_run") return { go: false, reason: g.reason };
       if (ch === "sms") used++;
       return { go: true, reason: g?.reason ?? null };
