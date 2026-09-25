@@ -17,7 +17,45 @@ export interface ImportRow {
   name: string;
   phone: string;
   email: string;
+  note?: string;
   confidence: { name: number; phone: number; email: number };
+}
+
+const PHONE_IN_TEXT = /(\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/;
+const EMAIL_IN_TEXT = /[^\s@<>(),;]+@[^\s@<>(),;]+\.[a-z]{2,}/i;
+
+/**
+ * Keep the name clean. If a phone number, email or note ended up inside the
+ * name, move the phone and email to their own fields and anything after them
+ * into the note. A nickname in parentheses stays part of the name.
+ */
+export function cleanRow(r: ImportRow): ImportRow {
+  let name = String(r.name ?? "").replace(/\s+/g, " ").trim();
+  let phone = String(r.phone ?? "").trim();
+  let email = String(r.email ?? "").trim();
+  const notes: string[] = r.note ? [String(r.note).trim()] : [];
+  const cutAt = (m: RegExpMatchArray) => {
+    const rest = name.slice(m.index! + m[0].length).replace(/^[\s,;:.\-]+/, "").trim();
+    if (rest) notes.push(rest);
+    name = name.slice(0, m.index!).trim();
+  };
+  const em = name.match(EMAIL_IN_TEXT);
+  if (em) { if (!email) email = em[0]; cutAt(em); }
+  const pm = name.match(PHONE_IN_TEXT);
+  if (pm) { if (!phone) phone = pm[0]; cutAt(pm); }
+  // "Fallon Kemp - Fallon is the daughter of ..." : the note starts at a dash.
+  const dash = name.match(/\s[-\u2013\u2014]\s/);
+  if (dash) { notes.push(name.slice(dash.index! + dash[0].length).trim()); name = name.slice(0, dash.index!).trim(); }
+  // A phone field that also carries words, like "404-573-8204 call after 6".
+  const pOnly = phone.match(PHONE_IN_TEXT);
+  if (pOnly && pOnly[0].length < phone.length) {
+    const extra = (phone.slice(0, pOnly.index!) + " " + phone.slice(pOnly.index! + pOnly[0].length)).replace(/^[\s,;:.\-]+|[\s,;:.\-]+$/g, "").trim();
+    if (extra) notes.push(extra);
+    phone = pOnly[0];
+  }
+  name = name.replace(/[\s,;:.\-]+$/, "").trim();
+  const note = notes.filter(Boolean).join(" ").slice(0, 500);
+  return { name, phone, email, ...(note ? { note } : {}), confidence: { ...r.confidence } };
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -54,7 +92,7 @@ export async function parseSheet(buf: Uint8Array): Promise<ImportRow[]> {
       const phone = pick(r, /(phone|mobile|cell|tel)/i);
       const email = pick(r, /e-?mail/i);
       if (!full && !phone && !email) continue;
-      out.push({ name: full, phone, email, confidence: { name: 1, phone: 1, email: 1 } });
+      out.push(cleanRow({ name: full, phone, email, note: pick(r, /^(notes?|relationship|comment)$/i), confidence: { name: 1, phone: 1, email: 1 } }));
       if (out.length >= IMPORT_LIMITS.maxRows) return out;
     }
   }
@@ -82,6 +120,7 @@ const SCHEMA_TOOL = {
               name: { type: "string" },
               phone: { type: "string" },
               email: { type: "string" },
+              note: { type: "string", description: "Relationship or any other words on the line. Never put these in name." },
               name_confidence: { type: "number" },
               phone_confidence: { type: "number" },
               email_confidence: { type: "number" },
@@ -100,7 +139,7 @@ export async function extractWithAi(input: { kind: "image" | "pdf" | "text"; mim
   const key = process.env.LOVABLE_API_KEY;
   if (!key) throw new Error("AI is not configured");
   const sys =
-    "You read contact lists, including handwritten ones. Extract every person with their name, phone and email exactly as written. Use an empty string when a value is missing. Confidence is 0 to 1 for how sure you are you read each value correctly; use a low number for smudged or unclear handwriting. Do not invent people or values.";
+    "You read contact lists, including handwritten ones. Extract every person with their name, phone and email exactly as written. The name field holds only the person's name (a nickname in parentheses is fine); never put a phone number, email, relationship or other note in it. Put relationship and other words in note, including text that wraps onto the next line. If a number is crossed out and a replacement is written in, use the replacement. One entry per person. Use an empty string when a value is missing. Confidence is 0 to 1 for how sure you are you read each value correctly; use a low number for smudged or unclear handwriting. Do not invent people or values.";
   const content: unknown[] = [{ type: "text", text: "Extract the contacts." }];
   if (input.kind === "text") content.push({ type: "text", text: input.text!.slice(0, IMPORT_LIMITS.textChars) });
   else if (input.kind === "image") content.push({ type: "image_url", image_url: { url: `data:${input.mime};base64,${input.base64}` } });
@@ -127,8 +166,9 @@ export async function extractWithAi(input: { kind: "image" | "pdf" | "text"; mim
   const args = j?.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
   const parsed = typeof args === "string" ? JSON.parse(args) : args;
   const people = Array.isArray(parsed?.people) ? parsed.people : [];
-  return people.slice(0, IMPORT_LIMITS.maxRows).map((p: any) => ({
+  return people.slice(0, IMPORT_LIMITS.maxRows).map((p: any) => cleanRow({
     name: String(p.name ?? "").trim(),
+    note: String(p.note ?? "").trim(),
     phone: String(p.phone ?? "").trim(),
     email: String(p.email ?? "").trim(),
     confidence: {
@@ -148,6 +188,7 @@ export async function purgeOldImports(admin: SupabaseClient<any, any, any>): Pro
     .lt("created_at", cutoff)
     .not("storage_path", "is", null);
   const rows = (data ?? []) as { id: string; storage_path: string }[];
+  await purgeImportRecords(admin);
   if (!rows.length) return 0;
   await admin.storage.from("contact-imports").remove(rows.map((r) => r.storage_path));
   await admin
@@ -157,4 +198,13 @@ export async function purgeOldImports(admin: SupabaseClient<any, any, any>): Pro
     .neq("status", "confirmed");
   await admin.from("contact_imports").update({ storage_path: null }).in("id", rows.map((r) => r.id));
   return rows.length;
+}
+
+/** Parsed rows and choices are kept 30 days for troubleshooting, then the record is removed. */
+export async function purgeImportRecords(admin: SupabaseClient<any, any, any>): Promise<void> {
+  const old = new Date(Date.now() - 30 * 86_400_000).toISOString();
+  const { data } = await admin.from("contact_imports").select("storage_path").lt("created_at", old).not("storage_path", "is", null);
+  const paths = ((data ?? []) as { storage_path: string }[]).map((r) => r.storage_path);
+  if (paths.length) await admin.storage.from("contact-imports").remove(paths);
+  await admin.from("contact_imports").delete().lt("created_at", old);
 }
