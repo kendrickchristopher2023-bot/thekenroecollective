@@ -114,7 +114,7 @@ export async function runTick(
       .in("status", ["scheduled", "moved"])
       .gte("starts_at", new Date(now.getTime() - LATE_WINDOW_MS - 12 * 3_600_000).toISOString())
       .lte("starts_at", new Date(now.getTime() + MAX_LEAD_MS).toISOString()),
-    admin.from("schedule_reminder_steps").select("*").in("schedule_id", ids),
+    admin.from("schedule_reminder_steps").select("*").in("schedule_id", ids).eq("active", true),
     admin
       .from("schedule_people")
       .select("*, contact:contacts(id,display_name,email,phone,email_opt_out)")

@@ -96,7 +96,7 @@ export const getSchedule = createServerFn({ method: "GET" })
     const [{ data: exceptions }, { data: people }, { data: steps }, { data: occurrences }, { data: sends }] = await Promise.all([
       sb.from("schedule_exceptions").select("*").eq("schedule_id", data.id),
       sb.from("schedule_people").select("*, contact:contacts(id,display_name,email,phone,email_opt_out)").eq("schedule_id", data.id).is("removed_at", null).order("created_at"),
-      sb.from("schedule_reminder_steps").select("*").eq("schedule_id", data.id).order("position"),
+      sb.from("schedule_reminder_steps").select("*").eq("schedule_id", data.id).eq("active", true).order("position"),
       sb.from("schedule_occurrences").select("*").eq("schedule_id", data.id).gte("ends_at", new Date().toISOString()).order("starts_at").limit(12),
       sb.from("schedule_reminder_sends").select("id,status,error,channel,due_at,sent_at,person_id,step_id,occurrence_id").eq("owner_user_id", context.userId).in("status", ["held", "paused", "blocked", "failed"]).order("due_at", { ascending: false }).limit(50),
     ]);
@@ -127,7 +127,7 @@ export const saveSchedule = createServerFn({ method: "POST" })
     if (v.source_type && v.source_id) {
       // Never trust a browser-sent link target: it must be the caller's own.
       if (v.source_type === "event") {
-        const { data: ok } = await sb.rpc("owns_event", { _event_id: v.source_id });
+        const { data: ok } = await sb.rpc("owns_event", { _event_id: v.source_id, _user_id: context.userId });
         if (ok !== true) throw new Error("You can only attach your own events.");
       } else {
         const { data: ok } = await sb.rpc("pm_is_project_admin", { _project_id: v.source_id, _user_id: context.userId });
@@ -176,7 +176,7 @@ export const splitSchedule = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     const newId = row.id as string;
     const [{ data: steps }, { data: ppl }] = await Promise.all([
-      sb.from("schedule_reminder_steps").select("offset_minutes,channel,is_starting_now,subject,body,position").eq("schedule_id", data.id),
+      sb.from("schedule_reminder_steps").select("offset_minutes,channel,is_starting_now,subject,body,position").eq("schedule_id", data.id).eq("active", true),
       sb.from("schedule_people").select("contact_id,channel,paused,sms_consent_by,sms_consent_at,first_sms_sent_at").eq("schedule_id", data.id).is("removed_at", null),
     ]);
     if (steps?.length) await sb.from("schedule_reminder_steps").insert(steps.map((s: any) => ({ ...s, schedule_id: newId })));
@@ -250,18 +250,16 @@ export const saveSteps = createServerFn({ method: "POST" })
     const sb = context.supabase as any;
     await assertCanUse(sb);
     await ownedSchedule(sb, data.id);
-    // Steps that already sent keep their history; only unsent ones are replaced.
-    const { data: existing } = await sb.from("schedule_reminder_steps").select("id").eq("schedule_id", data.id);
-    const { data: used } = await sb.from("schedule_reminder_sends").select("step_id").in("step_id", (existing ?? []).map((s: any) => s.id));
+    // Steps that already sent are switched off, never deleted, so their send
+    // history (and the no-double-send key) is kept.
+    const { data: existing } = await sb.from("schedule_reminder_steps").select("id").eq("schedule_id", data.id).eq("active", true);
+    const exIds = (existing ?? []).map((s: any) => s.id);
+    const { data: used } = exIds.length ? await sb.from("schedule_reminder_sends").select("step_id").in("step_id", exIds) : { data: [] };
     const usedIds = new Set((used ?? []).map((u: any) => u.step_id));
-    const deletable = (existing ?? []).map((s: any) => s.id).filter((x: string) => !usedIds.has(x));
-    if (deletable.length) await sb.from("schedule_reminder_steps").delete().in("id", deletable);
-    if (usedIds.size) {
-      // Retire used steps by moving them out of range of future sends is not possible;
-      // instead keep them but mark them as position -1 and replace their content.
-      await sb.from("schedule_reminder_steps").delete().in("id", [...usedIds]);
-    }
-    const rows = data.steps.map((s, i) => ({ ...s, is_starting_now: s.offset_minutes === 0 ? true : s.is_starting_now, schedule_id: data.id, position: i }));
+    const unused = exIds.filter((x: string) => !usedIds.has(x));
+    if (unused.length) await sb.from("schedule_reminder_steps").delete().in("id", unused);
+    if (usedIds.size) await sb.from("schedule_reminder_steps").update({ active: false }).in("id", [...usedIds]);
+    const rows = data.steps.map((s, i) => ({ ...s, is_starting_now: s.offset_minutes === 0 ? true : s.is_starting_now, schedule_id: data.id, position: i, active: true }));
     if (rows.length) {
       const { error } = await sb.from("schedule_reminder_steps").insert(rows);
       if (error) throw new Error(error.message);
