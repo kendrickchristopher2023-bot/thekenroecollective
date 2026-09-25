@@ -95,15 +95,17 @@ export const getSchedule = createServerFn({ method: "GET" })
   .handler(async ({ data, context }) => {
     const sb = context.supabase as any;
     const schedule = await ownedSchedule(sb, data.id);
-    const [{ data: exceptions }, { data: people }, { data: steps }, { data: occurrences }, { data: sends }] = await Promise.all([
+    const [{ data: exceptions }, { data: people }, { data: steps }, { data: occurrences }, { data: sends }, { data: allOcc }] = await Promise.all([
       sb.from("schedule_exceptions").select("*").eq("schedule_id", data.id),
       sb.from("schedule_people").select("*, contact:contacts(id,display_name,email,phone,email_opt_out)").eq("schedule_id", data.id).is("removed_at", null).order("created_at"),
       sb.from("schedule_reminder_steps").select("*").eq("schedule_id", data.id).eq("active", true).order("position"),
       sb.from("schedule_occurrences").select("*").eq("schedule_id", data.id).gte("ends_at", new Date().toISOString()).order("starts_at").limit(12),
-      sb.from("schedule_reminder_sends").select("id,status,error,channel,due_at,sent_at,person_id,step_id,occurrence_id").eq("owner_user_id", context.userId).in("status", ["held", "paused", "blocked", "failed"]).order("due_at", { ascending: false }).limit(50),
+      sb.from("schedule_reminder_sends").select("id,status,error,channel,due_at,sent_at,created_at,kind,person_id,step_id,occurrence_id").eq("owner_user_id", context.userId).order("created_at", { ascending: false }).limit(300),
+      sb.from("schedule_occurrences").select("id,starts_at").eq("schedule_id", data.id),
     ]);
-    const occIds = new Set((occurrences ?? []).map((o: any) => o.id));
-    const personIds = new Set((people ?? []).map((p: any) => p.id));
+    const occIds = new Set((allOcc ?? []).map((o: any) => o.id));
+    const occStart = new Map((allOcc ?? []).map((o: any) => [o.id, o.starts_at]));
+    const mine = (sends ?? []).filter((s: any) => occIds.has(s.occurrence_id));
     const { data: canUse } = await sb.rpc("i_can_use_schedules");
     return {
       schedule,
@@ -111,7 +113,8 @@ export const getSchedule = createServerFn({ method: "GET" })
       people: people ?? [],
       steps: steps ?? [],
       occurrences: occurrences ?? [],
-      problems: (sends ?? []).filter((s: any) => personIds.has(s.person_id) || occIds.has(s.occurrence_id)),
+      problems: mine.filter((s: any) => ["held", "paused", "blocked", "failed"].includes(s.status)).slice(0, 50),
+      history: mine.slice(0, 60).map((s: any) => ({ ...s, occurrence_starts_at: occStart.get(s.occurrence_id) ?? null })),
       canUse: canUse === true,
     };
   });
@@ -564,6 +567,47 @@ export const confirmContactImport = createServerFn({ method: "POST" })
       }
     }
     return { added: unique.length, problems, refused, cleared };
+  });
+
+// ---------------- Send now ----------------
+
+const SendNowTarget = z.object({
+  scheduleId: z.string().uuid(),
+  occurrenceId: z.string().uuid().nullable(),
+  channel: z.enum(["email", "sms", "both"]),
+  personIds: z.array(z.string().uuid()).max(500).nullable(),
+});
+
+export const previewSendNow = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => SendNowTarget.parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const engine = await import("@/lib/schedules-engine.server");
+    const { isDemoCaller } = await import("@/lib/demo-mode.server");
+    const r = await engine.manualSendPreview(supabaseAdmin as any, context.supabase, context.userId, data);
+    return { ...r, demo: r.demo || (await isDemoCaller(context as any).catch(() => true)) };
+  });
+
+export const sendNow = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    SendNowTarget.extend({
+      occurrenceId: z.string().uuid(),
+      requestId: z.string().uuid(),
+      subject: z.string().trim().min(1).max(200),
+      emailBody: z.string().trim().min(1).max(4000),
+      smsBody: z.string().trim().min(1).max(480),
+      textsAtMorning: z.boolean().default(false),
+    }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const engine = await import("@/lib/schedules-engine.server");
+    const { isDemoCaller } = await import("@/lib/demo-mode.server");
+    // Demo and showcase sessions are dry runs no matter what the browser sends.
+    const forceDryRun = await isDemoCaller(context as any).catch(() => true);
+    return engine.manualSend(supabaseAdmin as any, context.supabase, context.userId, { ...data, forceDryRun });
   });
 
 // ---------------- Owner tools ----------------

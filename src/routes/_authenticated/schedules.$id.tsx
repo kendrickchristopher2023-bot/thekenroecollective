@@ -6,6 +6,7 @@ import { ArrowLeft } from "lucide-react";
 import { SiteFooter, SiteNav } from "@/components/site-nav";
 import { SkeletonPanel } from "@/components/skeletons";
 import { ScheduleImport } from "@/components/schedule-import";
+import { SendNowButton, SKIP_LABEL } from "@/components/schedule-send-now";
 import {
   getSchedule,
   getScheduleAccess,
@@ -111,8 +112,13 @@ function ScheduleEditor() {
         <Link to="/schedules" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
           <ArrowLeft className="h-4 w-4" /> All schedules
         </Link>
-        <h1 className="mt-3 font-serif text-3xl sm:text-4xl">{title}</h1>
-        {data?.schedule ? <p className="mt-1 text-sm text-muted-foreground">{describeRule(data.schedule.rrule)} · {data.schedule.timezone.replace(/_/g, " ")}</p> : null}
+        <div className="mt-3 flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="font-serif text-3xl sm:text-4xl">{title}</h1>
+            {data?.schedule ? <p className="mt-1 text-sm text-muted-foreground">{describeRule(data.schedule.rrule)} · {data.schedule.timezone.replace(/_/g, " ")}</p> : null}
+          </div>
+          {data ? <SendNowButton scheduleId={id} people={data.people} onDone={refresh} /> : null}
+        </div>
 
         {canUse === false ? (
           <p className="mt-5 rounded-2xl bg-amber-100 p-4 text-sm text-amber-900">
@@ -144,7 +150,7 @@ function ScheduleEditor() {
             />
           ) : null}
           {data && tab === "people" ? <PeoplePanel scheduleId={id} people={data.people} isDemo={isDemo} onChange={refresh} /> : null}
-          {data && tab === "reminders" ? <RemindersPanel scheduleId={id} steps={data.steps} problems={data.problems} people={data.people} onChange={refresh} /> : null}
+          {data && tab === "reminders" ? <RemindersPanel scheduleId={id} steps={data.steps} problems={data.problems} history={data.history ?? []} people={data.people} onChange={refresh} /> : null}
           {data && tab === "upcoming" ? <UpcomingPanel data={data} onChange={refresh} /> : null}
         </div>
 
@@ -519,9 +525,19 @@ const PROBLEM_LABEL: Record<string, string> = {
   no_phone: "Not sent: no phone number",
   no_email: "Not sent: no email address",
   demo: "Not sent: demo account",
+  no_longer_scheduled: "Not sent: the date or person was removed",
 };
 
-function RemindersPanel({ scheduleId, steps, problems, people, onChange }: { scheduleId: string; steps: any[]; problems: any[]; people: any[]; onChange: () => void }) {
+const HISTORY_STATUS: Record<string, string> = {
+  queued: "Text sent",
+  sent: "Email sent",
+  delivered: "Delivered",
+  scheduled: "Waiting for 8:00 AM",
+  pending: "Sending",
+  dry_run: "Test run, not sent",
+};
+
+function RemindersPanel({ scheduleId, steps, problems, history, people, onChange }: { scheduleId: string; steps: any[]; problems: any[]; history: any[]; people: any[]; onChange: () => void }) {
   const save = useServerFn(saveSteps);
   const [list, setList] = useState<StepDraft[]>(() => (steps.length ? steps : DEFAULT_STEPS).map((s: any, i: number) => ({ offset_minutes: s.offset_minutes, channel: s.channel, is_starting_now: s.is_starting_now, subject: s.subject, body: s.body, position: i })));
   const [busy, setBusy] = useState(false);
@@ -577,6 +593,23 @@ function RemindersPanel({ scheduleId, steps, problems, people, onChange }: { sch
           </ul>
         </section>
       ) : null}
+
+      <section className="rounded-3xl bg-card p-6 ring-1 ring-ink/5 sm:p-8">
+        <h2 className="font-serif text-xl">History</h2>
+        {!history.length ? <p className="mt-3 text-sm text-muted-foreground">Nothing sent yet.</p> : (
+          <ul className="mt-4 divide-y divide-ink/5 text-sm">
+            {history.map((h) => (
+              <li key={h.id} className="flex flex-col gap-1 py-2 sm:flex-row sm:justify-between sm:gap-4">
+                <span className="min-w-0">
+                  <span className="font-medium">{names.get(h.person_id) ?? "Someone"}</span>, {h.channel === "sms" ? "text" : "email"}
+                  <span className="text-muted-foreground"> · {h.kind === "manual" ? "Sent now" : "Automatic"} · {new Date(h.sent_at ?? h.created_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span>
+                </span>
+                <span className="text-muted-foreground">{HISTORY_STATUS[h.status] ?? PROBLEM_LABEL[h.error] ?? (SKIP_LABEL[h.error] ? `Not sent: ${SKIP_LABEL[h.error]}` : `Not sent: ${h.error ?? h.status}`)}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }

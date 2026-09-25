@@ -17,6 +17,8 @@ import {
   DAILY_SMS_CAP,
   complianceIntro,
   STOP_LINE,
+  inQuietHours,
+  DEFAULT_STEPS,
 } from "@/lib/schedule-messages";
 import { phoneKeys, canonicalPhone } from "@/lib/phone-keys";
 
@@ -82,6 +84,7 @@ export async function topUpAll(admin: Admin, now = new Date()) {
   return n;
 }
 
+
 export interface TickResult {
   considered: number;
   claimed: number;
@@ -91,6 +94,196 @@ export interface TickResult {
   dryRun: boolean;
 }
 
+// ---------------------------------------------------------------------------
+// Shared guards and delivery. The automatic tick and "Send now" both go
+// through guardFor() and deliverClaimed(), so the checks run in one order.
+// ---------------------------------------------------------------------------
+
+export interface OwnerInfo {
+  entitled: boolean;
+  demo: boolean;
+  host: string;
+  isOwner: boolean;
+}
+
+export function makeOwnerCache(admin: Admin, now: Date) {
+  const cache = new Map<string, OwnerInfo>();
+  const smsToday = new Map<string, number>();
+  async function info(uid: string): Promise<OwnerInfo> {
+    let v = cache.get(uid);
+    if (!v) {
+      const [{ data: can }, { data: demo }, { data: prof }, { data: own }] = await Promise.all([
+        admin.rpc("can_use_schedules", { _uid: uid }),
+        admin.rpc("is_demo_user", { _user_id: uid }),
+        admin.from("profiles").select("display_name").eq("id", uid).maybeSingle(),
+        admin.rpc("has_role", { _user_id: uid, _role: "owner" }),
+      ]);
+      v = {
+        entitled: can === true,
+        demo: demo === true,
+        host: ((prof as any)?.display_name as string) || "your host",
+        isOwner: own === true,
+      };
+      cache.set(uid, v);
+      // Manual and automatic texts share this table, so both count toward the cap.
+      const since = new Date(now.getTime() - 86_400_000).toISOString();
+      const { count } = await admin
+        .from("schedule_reminder_sends")
+        .select("id", { count: "exact", head: true })
+        .eq("owner_user_id", uid)
+        .eq("channel", "sms")
+        .in("status", ["queued", "sent", "delivered"])
+        .gte("sent_at", since);
+      smsToday.set(uid, count ?? 0);
+    }
+    return v;
+  }
+  return { info, smsToday };
+}
+
+/** Every stored form of every number, checked against the shared opt-out record. */
+export async function loadOptOuts(admin: Admin, phones: (string | null | undefined)[]): Promise<Set<string>> {
+  const all = new Set<string>();
+  for (const ph of phones) if (ph) for (const k of phoneKeys(ph)) { all.add(k); all.add(`+${k}`); }
+  const out = new Set<string>();
+  if (all.size) {
+    const { data } = await admin.from("sms_consent_log").select("phone_number,opted_out").in("phone_number", [...all]);
+    for (const r of data ?? []) if ((r as any).opted_out) out.add(canonicalPhone((r as any).phone_number));
+  }
+  return out;
+}
+
+export type GuardResult = { status: "dry_run" | "paused" | "blocked" | "held"; reason: string } | null;
+
+/** The one ordered list of checks. null means the send may go. */
+export function guardFor(args: {
+  schedule: any;
+  person: any;
+  channel: "email" | "sms";
+  info: OwnerInfo;
+  optedOut: Set<string>;
+  smsUsed: number;
+}): GuardResult {
+  const { schedule: s, person, channel, info, optedOut, smsUsed } = args;
+  const c = person.contact ?? {};
+  if (s.is_demo || info.demo) return { status: "dry_run", reason: "demo" };
+  if (!info.entitled) return { status: "paused", reason: "plan_downgraded" };
+  if (person.paused) return { status: "paused", reason: "person_paused" };
+  if (channel === "email") {
+    if (!c.email) return { status: "blocked", reason: "no_email" };
+    if (c.email_opt_out) return { status: "blocked", reason: "email_opt_out" };
+    return null;
+  }
+  if (!c.phone) return { status: "blocked", reason: "no_phone" };
+  if (!person.sms_consent_at) return { status: "blocked", reason: "no_text_consent" };
+  if (optedOut.has(canonicalPhone(c.phone))) return { status: "blocked", reason: "opted_out" };
+  if (!info.isOwner && smsUsed >= DAILY_SMS_CAP) return { status: "held", reason: "daily_text_limit" };
+  return null;
+}
+
+export function mergeValues(s: any, person: any, startsAt: Date, host: string) {
+  return {
+    first_name: firstName(person.contact?.display_name),
+    title: s.title,
+    when: whenLabel(startsAt, s.timezone),
+    join: s.join_url || [s.dial_in, s.dial_pin ? `PIN ${s.dial_pin}` : ""].filter(Boolean).join(" ") || s.location,
+    calendar: calendarLink(person.rsvp_token),
+    host,
+  };
+}
+
+/** The exact text a person receives, including the first-text intro. */
+export function finalSmsBody(template: string, values: ReturnType<typeof mergeValues>, person: any, host: string) {
+  let body = renderTemplate(template, values);
+  if (!person.first_sms_sent_at) body = complianceIntro(host) + body + STOP_LINE;
+  return body.slice(0, 480);
+}
+
+/**
+ * Runs the guards for a row this caller already claimed, then hands it to the
+ * existing pipes. Returns the final status written to the row.
+ */
+export async function deliverClaimed(args: {
+  admin: Admin;
+  sendId: string;
+  schedule: any;
+  person: any;
+  channel: "email" | "sms";
+  startsAt: Date;
+  subject: string | null;
+  body: string;
+  owners: ReturnType<typeof makeOwnerCache>;
+  optedOut: Set<string>;
+  dryRun: boolean;
+}): Promise<{ status: string; reason: string | null }> {
+  const { admin, sendId, schedule: s, person, channel, startsAt, owners, optedOut, dryRun } = args;
+  const mark = async (status: string, error?: string | null) => {
+    await admin.from("schedule_reminder_sends").update({ status, error: error ?? null }).eq("id", sendId);
+    return { status, reason: error ?? null };
+  };
+  const info = await owners.info(s.owner_user_id);
+  const used = owners.smsToday.get(s.owner_user_id) ?? 0;
+  const g = guardFor({ schedule: s, person, channel, info, optedOut, smsUsed: used });
+  if (g?.reason === "demo") {
+    // Nothing is ever sent for demo. Record the real skip reason when there is
+    // one, so the demo shows what would really happen.
+    const would = guardFor({ schedule: { ...s, is_demo: false }, person, channel, info: { ...info, demo: false }, optedOut, smsUsed: used });
+    if (would && would.reason !== "plan_downgraded") return mark(would.status, would.reason);
+    return mark("dry_run", "demo");
+  }
+  if (g) return mark(g.status, g.reason);
+
+  const c = person.contact ?? {};
+  const values = mergeValues(s, person, startsAt, info.host);
+
+  if (channel === "email") {
+    if (dryRun) return mark("dry_run");
+    const { enqueueTransactionalEmailServer } = await import("@/lib/email/server-enqueue.server");
+    const r = await enqueueTransactionalEmailServer({
+      templateName: "contact-broadcast",
+      recipientEmail: c.email,
+      idempotencyKey: `sched-${sendId}`,
+      label: "schedule_reminder",
+      fromName: info.host,
+      templateData: {
+        subject: renderTemplate(args.subject || "Reminder: {title}", values),
+        body: renderTemplate(args.body, values),
+        senderName: info.host,
+        ctaUrl: calendarLink(person.rsvp_token),
+        ctaLabel: "Add to calendar",
+      },
+    });
+    if (r.ok) {
+      const status = r.reason === "demo" ? "blocked" : "sent";
+      await admin.from("schedule_reminder_sends").update({ status, error: r.reason ?? null, sent_at: new Date().toISOString() }).eq("id", sendId);
+      return { status, reason: r.reason ?? null };
+    }
+    return mark("failed", r.reason ?? "email_failed");
+  }
+
+  const body = finalSmsBody(args.body, values, person, info.host);
+  // A dry run counts toward the daily cap too, so it predicts real holds.
+  if (dryRun) { owners.smsToday.set(s.owner_user_id, used + 1); return mark("dry_run"); }
+  const { data: ob, error: obErr } = await admin
+    .from("sms_outbox")
+    .insert({ user_id: s.owner_user_id, to_phone: c.phone, guest_name: c.display_name ?? null, body, status: "pending" })
+    .select("id")
+    .single();
+  if (obErr || !ob) return mark("failed", obErr?.message ?? "queue_failed");
+  owners.smsToday.set(s.owner_user_id, used + 1);
+  await admin
+    .from("schedule_reminder_sends")
+    .update({ status: "queued", sms_outbox_id: (ob as any).id, sent_at: new Date().toISOString() })
+    .eq("id", sendId);
+  if (!person.first_sms_sent_at) {
+    person.first_sms_sent_at = new Date().toISOString();
+    await admin.from("schedule_people").update({ first_sms_sent_at: person.first_sms_sent_at }).eq("id", person.id);
+  }
+  return { status: "queued", reason: null };
+}
+
+const PEOPLE_SELECT = "*, contact:contacts(id,display_name,email,phone,email_opt_out)";
+
 export async function runTick(
   admin: Admin,
   opts: { now?: Date; dryRun?: boolean; ownerUserId?: string } = {},
@@ -98,6 +291,11 @@ export async function runTick(
   const now = opts.now ?? new Date();
   const dryRun = !!opts.dryRun;
   const res: TickResult = { considered: 0, claimed: 0, queued: 0, blocked: 0, held: 0, dryRun };
+  const count = (st: string) => {
+    if (st === "queued" || st === "sent") res.queued++;
+    else if (st === "held") res.held++;
+    else if (st !== "dry_run") res.blocked++;
+  };
 
   let sq = admin.from("schedules").select("*").eq("status", "active");
   if (opts.ownerUserId) sq = sq.eq("owner_user_id", opts.ownerUserId);
@@ -115,60 +313,11 @@ export async function runTick(
       .gte("starts_at", new Date(now.getTime() - LATE_WINDOW_MS - 12 * 3_600_000).toISOString())
       .lte("starts_at", new Date(now.getTime() + MAX_LEAD_MS).toISOString()),
     admin.from("schedule_reminder_steps").select("*").in("schedule_id", ids).eq("active", true),
-    admin
-      .from("schedule_people")
-      .select("*, contact:contacts(id,display_name,email,phone,email_opt_out)")
-      .in("schedule_id", ids)
-      .is("removed_at", null),
+    admin.from("schedule_people").select(PEOPLE_SELECT).in("schedule_id", ids).is("removed_at", null),
   ]);
 
-  const entitled = new Map<string, boolean>();
-  const demoOwner = new Map<string, boolean>();
-  const hostNames = new Map<string, string>();
-  const smsToday = new Map<string, number>();
-  const isOwnerRole = new Map<string, boolean>();
-
-  async function ownerInfo(uid: string) {
-    if (!entitled.has(uid)) {
-      const [{ data: can }, { data: demo }, { data: prof }, { data: own }] = await Promise.all([
-        admin.rpc("can_use_schedules", { _uid: uid }),
-        admin.rpc("is_demo_user", { _user_id: uid }),
-        admin.from("profiles").select("display_name").eq("id", uid).maybeSingle(),
-        admin.rpc("has_role", { _user_id: uid, _role: "owner" }),
-      ]);
-      entitled.set(uid, can === true);
-      demoOwner.set(uid, demo === true);
-      hostNames.set(uid, ((prof as any)?.display_name as string) || "your host");
-      isOwnerRole.set(uid, own === true);
-      const since = new Date(now.getTime() - 86_400_000).toISOString();
-      const { count } = await admin
-        .from("schedule_reminder_sends")
-        .select("id", { count: "exact", head: true })
-        .eq("owner_user_id", uid)
-        .eq("channel", "sms")
-        .in("status", ["queued", "sent", "delivered"])
-        .gte("sent_at", since);
-      smsToday.set(uid, count ?? 0);
-    }
-    return {
-      entitled: entitled.get(uid)!,
-      demo: demoOwner.get(uid)!,
-      host: hostNames.get(uid)!,
-      isOwner: isOwnerRole.get(uid)!,
-    };
-  }
-
-  // Opt-out lookup, every stored form of every number.
-  const allPhones = new Set<string>();
-  for (const p of people ?? []) {
-    const ph = (p as any).contact?.phone as string | null;
-    if (ph) for (const k of phoneKeys(ph)) { allPhones.add(k); allPhones.add(`+${k}`); }
-  }
-  const optedOut = new Set<string>();
-  if (allPhones.size) {
-    const { data: opt } = await admin.from("sms_consent_log").select("phone_number,opted_out").in("phone_number", [...allPhones]);
-    for (const r of opt ?? []) if ((r as any).opted_out) optedOut.add(canonicalPhone((r as any).phone_number));
-  }
+  const owners = makeOwnerCache(admin, now);
+  const optedOut = await loadOptOuts(admin, (people ?? []).map((p: any) => p.contact?.phone));
 
   for (const o of occs ?? []) {
     const s: any = byId.get((o as any).schedule_id);
@@ -205,84 +354,265 @@ export async function runTick(
         const sendId = (claimed as any)?.[0]?.id as string | undefined;
         if (!sendId) continue; // already claimed by an earlier or overlapping tick
         res.claimed++;
-
-        const mark = async (status: string, error?: string) => {
-          await admin.from("schedule_reminder_sends").update({ status, error: error ?? null }).eq("id", sendId);
-          if (status === "held") res.held++;
-          else if (status !== "queued" && status !== "dry_run") res.blocked++;
-        };
-
-        const info = await ownerInfo(s.owner_user_id);
-        const c = person.contact ?? {};
-        // Demo/showcase: never reaches a sender. Recorded as a dry run only.
-        if (s.is_demo || info.demo) { await mark("dry_run", "demo"); continue; }
-        if (!info.entitled) { await mark("paused", "plan_downgraded"); continue; }
-        if (person.paused) { await mark("paused", "person_paused"); continue; }
-
-        const values = {
-          first_name: firstName(c.display_name),
-          title: s.title,
-          when: whenLabel(startsAt, s.timezone),
-          join: s.join_url || [s.dial_in, s.dial_pin ? `PIN ${s.dial_pin}` : ""].filter(Boolean).join(" ") || s.location,
-          calendar: calendarLink(person.rsvp_token),
-          host: info.host,
-        };
-
-        if (channel === "email") {
-          if (!c.email) { await mark("blocked", "no_email"); continue; }
-          if (c.email_opt_out) { await mark("blocked", "email_opt_out"); continue; }
-          if (dryRun) { await mark("dry_run"); continue; }
-          const { enqueueTransactionalEmailServer } = await import("@/lib/email/server-enqueue.server");
-          const r = await enqueueTransactionalEmailServer({
-            templateName: "contact-broadcast",
-            recipientEmail: c.email,
-            idempotencyKey: `sched-${sendId}`,
-            label: "schedule_reminder",
-            fromName: info.host,
-            templateData: {
-              subject: renderTemplate((st as any).subject || "Reminder: {title}", values),
-              body: renderTemplate((st as any).body, values),
-              senderName: info.host,
-              ctaUrl: calendarLink(person.rsvp_token),
-              ctaLabel: "Add to calendar",
-            },
-          });
-          if (r.ok) {
-            await admin.from("schedule_reminder_sends").update({ status: r.reason === "demo" ? "blocked" : "sent", error: r.reason ?? null, sent_at: new Date().toISOString() }).eq("id", sendId);
-            res.queued++;
-          } else await mark("failed", r.reason ?? "email_failed");
-          continue;
-        }
-
-        // SMS
-        if (!c.phone) { await mark("blocked", "no_phone"); continue; }
-        if (!person.sms_consent_at) { await mark("blocked", "no_text_consent"); continue; }
-        if (optedOut.has(canonicalPhone(c.phone))) { await mark("blocked", "opted_out"); continue; }
-        const used = smsToday.get(s.owner_user_id) ?? 0;
-        if (!info.isOwner && used >= DAILY_SMS_CAP) { await mark("held", "daily_text_limit"); continue; }
-        let body = renderTemplate((st as any).body, values);
-        if (!person.first_sms_sent_at) body = complianceIntro(info.host) + body + STOP_LINE;
-        body = body.slice(0, 480);
-        // A dry run counts toward the daily cap too, so it predicts real holds.
-        if (dryRun) { smsToday.set(s.owner_user_id, used + 1); await mark("dry_run"); continue; }
-        const { data: ob, error: obErr } = await admin
-          .from("sms_outbox")
-          .insert({ user_id: s.owner_user_id, to_phone: c.phone, guest_name: c.display_name ?? null, body, status: "pending" })
-          .select("id")
-          .single();
-        if (obErr || !ob) { await mark("failed", obErr?.message ?? "queue_failed"); continue; }
-        smsToday.set(s.owner_user_id, used + 1);
-        await admin
-          .from("schedule_reminder_sends")
-          .update({ status: "queued", sms_outbox_id: (ob as any).id, sent_at: new Date().toISOString() })
-          .eq("id", sendId);
-        if (!person.first_sms_sent_at) {
-          person.first_sms_sent_at = new Date().toISOString();
-          await admin.from("schedule_people").update({ first_sms_sent_at: person.first_sms_sent_at }).eq("id", person.id);
-        }
-        res.queued++;
+        const r = await deliverClaimed({
+          admin, sendId, schedule: s, person, channel, startsAt,
+          subject: (st as any).subject, body: (st as any).body, owners, optedOut, dryRun,
+        });
+        count(r.status);
       }
     }
   }
+
+  // "Send texts at 8:00 AM" rows from Send now. Claimed by flipping
+  // scheduled -> pending, so only one tick ever picks each one up.
+  let mq = admin
+    .from("schedule_reminder_sends")
+    .select("id")
+    .eq("kind", "manual")
+    .eq("status", "scheduled")
+    .lte("due_at", now.toISOString())
+    .limit(500);
+  if (opts.ownerUserId) mq = mq.eq("owner_user_id", opts.ownerUserId);
+  const { data: waiting } = await mq;
+  for (const w of waiting ?? []) {
+    const { data: got } = await admin
+      .from("schedule_reminder_sends")
+      .update({ status: "pending" })
+      .eq("id", (w as any).id)
+      .eq("status", "scheduled")
+      .select("id, channel, subject, body, person_id, occurrence_id");
+    const row: any = got?.[0];
+    if (!row) continue;
+    res.claimed++;
+    const [{ data: occ }, { data: person }] = await Promise.all([
+      admin.from("schedule_occurrences").select("*").eq("id", row.occurrence_id).maybeSingle(),
+      admin.from("schedule_people").select(PEOPLE_SELECT).eq("id", row.person_id).maybeSingle(),
+    ]);
+    const { data: s } = occ ? await admin.from("schedules").select("*").eq("id", (occ as any).schedule_id).maybeSingle() : { data: null };
+    if (!occ || !person || !s || (person as any).removed_at || (s as any).status !== "active" || !["scheduled", "moved"].includes((occ as any).status)) {
+      await admin.from("schedule_reminder_sends").update({ status: "blocked", error: "no_longer_scheduled" }).eq("id", row.id);
+      res.blocked++;
+      continue;
+    }
+    const opt = await loadOptOuts(admin, [(person as any).contact?.phone]);
+    const r = await deliverClaimed({
+      admin, sendId: row.id, schedule: s, person, channel: row.channel, startsAt: new Date((occ as any).starts_at),
+      subject: row.subject, body: row.body, owners, optedOut: opt, dryRun,
+    });
+    count(r.status);
+  }
   return res;
+}
+
+// ---------------------------------------------------------------------------
+// Send now
+// ---------------------------------------------------------------------------
+
+/** Fill everything that is the same for everyone; keep per-person fields as tokens. */
+export function prefill(tpl: string, s: any, startsAt: Date, host: string): string {
+  const map: Record<string, string> = {
+    title: s.title || "Our call",
+    when: whenLabel(startsAt, s.timezone),
+    join: s.join_url || [s.dial_in, s.dial_pin ? `PIN ${s.dial_pin}` : ""].filter(Boolean).join(" ") || s.location || "see the invitation",
+    host,
+  };
+  return tpl.replace(/\{(title|when|join|host)\}/g, (_m, k: string) => map[k] ?? _m);
+}
+
+/** The step for this date whose send time is closest to now, per channel. */
+function nearestStep(steps: any[], channel: "email" | "sms", startsAt: Date, now: Date) {
+  const list = steps.filter((x) => x.channel === channel);
+  if (!list.length) return DEFAULT_STEPS.find((x) => x.channel === channel)!;
+  return list.reduce((best, x) => {
+    const d = Math.abs(startsAt.getTime() + x.offset_minutes * 60_000 - now.getTime());
+    const b = Math.abs(startsAt.getTime() + best.offset_minutes * 60_000 - now.getTime());
+    return d < b ? x : best;
+  });
+}
+
+/** Next 8:00 AM in the schedule's zone, from a quiet-hours moment. */
+export function nextMorning(now: Date, timezone: string): Date {
+  return quietHoursSendAt(now, new Date(now.getTime() + 2 * 86_400_000), timezone);
+}
+
+export interface ManualPlanRow {
+  personId: string;
+  name: string;
+  email: { go: boolean; reason: string | null; minutesAgo?: number } | null;
+  sms: { go: boolean; reason: string | null; minutesAgo?: number } | null;
+}
+
+async function loadForManual(admin: Admin, userClient: any, userId: string, scheduleId: string, occurrenceId: string | null, now: Date) {
+  // Ownership is proven through the caller's own client (RLS) before any admin read or write.
+  const { data: owned, error } = await userClient.from("schedules").select("id, owner_user_id").eq("id", scheduleId).maybeSingle();
+  if (error || !owned || owned.owner_user_id !== userId) throw new Error("Schedule not found.");
+  const [{ data: s }, { data: occs }, { data: steps }, { data: people }] = await Promise.all([
+    admin.from("schedules").select("*").eq("id", scheduleId).single(),
+    admin.from("schedule_occurrences").select("*").eq("schedule_id", scheduleId).in("status", ["scheduled", "moved"]).gte("ends_at", now.toISOString()).order("starts_at").limit(12),
+    admin.from("schedule_reminder_steps").select("*").eq("schedule_id", scheduleId).eq("active", true).order("position"),
+    admin.from("schedule_people").select(PEOPLE_SELECT).eq("schedule_id", scheduleId).is("removed_at", null).order("created_at"),
+  ]);
+  const occ = (occs ?? []).find((o: any) => o.id === occurrenceId) ?? (occurrenceId ? null : occs?.[0]);
+  if (occurrenceId && !occ) throw new Error("That date is no longer on the schedule.");
+  return { s: s as any, occs: (occs ?? []) as any[], occ: occ as any, steps: (steps ?? []) as any[], people: (people ?? []) as any[] };
+}
+
+async function recentManual(admin: Admin, occurrenceId: string, now: Date) {
+  const { data } = await admin
+    .from("schedule_reminder_sends")
+    .select("person_id, channel, created_at, status")
+    .eq("kind", "manual")
+    .eq("occurrence_id", occurrenceId)
+    .gt("created_at", new Date(now.getTime() - 10 * 60_000).toISOString())
+    .not("status", "in", "(blocked,failed,paused,held)");
+  const m = new Map<string, Date>();
+  for (const r of data ?? []) m.set(`${(r as any).person_id}:${(r as any).channel}`, new Date((r as any).created_at));
+  return m;
+}
+
+export async function manualSendPreview(admin: Admin, userClient: any, userId: string, input: {
+  scheduleId: string; occurrenceId: string | null; channel: "email" | "sms" | "both"; personIds: string[] | null;
+}, now = new Date()) {
+  const { s, occs, occ, steps, people } = await loadForManual(admin, userClient, userId, input.scheduleId, input.occurrenceId, now);
+  const owners = makeOwnerCache(admin, now);
+  const info = await owners.info(s.owner_user_id);
+  const dates = occs.map((o) => ({ id: o.id, startsAt: o.starts_at, label: whenLabel(new Date(o.starts_at), s.timezone) }));
+  if (!occ) return { dates, occurrenceId: null, rows: [], templates: null, quiet: false, morningAt: null, morningOk: false, demo: s.is_demo || info.demo, entitled: info.entitled, capLeft: null, timezone: s.timezone, samplePerson: null };
+  const startsAt = new Date(occ.starts_at);
+  const emailStep = nearestStep(steps, "email", startsAt, now);
+  const smsStep = nearestStep(steps, "sms", startsAt, now);
+  const chosen = input.personIds ? people.filter((p) => input.personIds!.includes(p.id)) : people;
+  const optedOut = await loadOptOuts(admin, chosen.map((p) => p.contact?.phone));
+  const recent = await recentManual(admin, occ.id, now);
+  let used = owners.smsToday.get(s.owner_user_id) ?? 0;
+  const rows: ManualPlanRow[] = chosen.map((p) => {
+    const name = p.contact?.display_name || p.contact?.email || p.contact?.phone || "Someone";
+    const one = (ch: "email" | "sms") => {
+      if (input.channel !== "both" && input.channel !== ch) return null;
+      if (p.channel !== "both" && p.channel !== ch) return { go: false, reason: ch === "sms" ? "prefers_email" : "prefers_text" };
+      const prior = recent.get(`${p.id}:${ch}`);
+      if (prior) return { go: false, reason: "already_sent", minutesAgo: Math.max(0, Math.floor((now.getTime() - prior.getTime()) / 60_000)) };
+      let g = guardFor({ schedule: s, person: p, channel: ch, info, optedOut, smsUsed: used });
+      if (g?.reason === "demo") {
+        const would = guardFor({ schedule: { ...s, is_demo: false }, person: p, channel: ch, info: { ...info, demo: false }, optedOut, smsUsed: used });
+        if (would && would.reason !== "plan_downgraded") g = would;
+      }
+      if (g && g.status !== "dry_run") return { go: false, reason: g.reason };
+      if (ch === "sms") used++;
+      return { go: true, reason: g?.reason ?? null };
+    };
+    return { personId: p.id, name, email: one("email"), sms: one("sms") };
+  });
+  const quiet = inQuietHours(now, s.timezone);
+  const morning = quiet ? nextMorning(now, s.timezone) : null;
+  const first = chosen[0] ?? people[0] ?? null;
+  return {
+    dates,
+    occurrenceId: occ.id as string,
+    rows,
+    templates: {
+      subject: prefill(emailStep.subject || "Reminder: {title}", s, startsAt, info.host),
+      emailBody: prefill(emailStep.body, s, startsAt, info.host),
+      smsBody: prefill(smsStep.body, s, startsAt, info.host),
+    },
+    quiet,
+    morningAt: morning ? morning.toISOString() : null,
+    morningLabel: morning ? whenLabel(morning, s.timezone) : null,
+    morningOk: !!morning && morning < startsAt,
+    demo: !!(s.is_demo || info.demo),
+    entitled: info.entitled,
+    capLeft: info.isOwner ? null : Math.max(0, DAILY_SMS_CAP - (owners.smsToday.get(s.owner_user_id) ?? 0)),
+    timezone: s.timezone,
+    samplePerson: first ? { firstName: firstName(first.contact?.display_name), needsIntro: !first.first_sms_sent_at, host: info.host, calendar: calendarLink(first.rsvp_token) } : null,
+  };
+}
+
+export interface ManualResultRow {
+  personId: string;
+  name: string;
+  channel: "email" | "sms";
+  status: string;
+  reason: string | null;
+  minutesAgo?: number;
+  at?: string | null;
+}
+
+export async function manualSend(admin: Admin, userClient: any, userId: string, input: {
+  scheduleId: string; occurrenceId: string; channel: "email" | "sms" | "both"; personIds: string[] | null;
+  requestId: string; subject: string; emailBody: string; smsBody: string; textsAtMorning: boolean; forceDryRun: boolean;
+}, now = new Date()) {
+  const { s, occ, people } = await loadForManual(admin, userClient, userId, input.scheduleId, input.occurrenceId, now);
+  if (!occ) throw new Error("That date is no longer on the schedule.");
+  const startsAt = new Date(occ.starts_at);
+  const owners = makeOwnerCache(admin, now);
+  const chosen = input.personIds ? people.filter((p) => input.personIds!.includes(p.id)) : people;
+  const optedOut = await loadOptOuts(admin, chosen.map((p) => p.contact?.phone));
+  const quiet = inQuietHours(now, s.timezone);
+  const morning = quiet ? nextMorning(now, s.timezone) : null;
+  const dryRun = input.forceDryRun;
+  const out: ManualResultRow[] = [];
+
+  for (const p of chosen) {
+    const name = p.contact?.display_name || p.contact?.email || p.contact?.phone || "Someone";
+    for (const ch of ["email", "sms"] as const) {
+      if (input.channel !== "both" && input.channel !== ch) continue;
+      if (p.channel !== "both" && p.channel !== ch) continue;
+      // Quiet hours apply to everyone, owners included.
+      let status = "pending";
+      let due = now;
+      if (ch === "sms" && quiet) {
+        if (!input.textsAtMorning || !morning || morning >= startsAt) {
+          out.push({ personId: p.id, name, channel: ch, status: "not_sent", reason: "quiet_hours" });
+          continue;
+        }
+        status = "scheduled";
+        due = morning;
+      }
+      const { data: claim, error } = await admin.rpc("claim_manual_schedule_send", {
+        _manual_send_id: input.requestId,
+        _occurrence_id: occ.id,
+        _person_id: p.id,
+        _channel: ch,
+        _owner: s.owner_user_id,
+        _due_at: due.toISOString(),
+        _status: status,
+        _subject: ch === "email" ? input.subject : null,
+        _body: ch === "email" ? input.emailBody : input.smsBody,
+      });
+      if (error) throw new Error(error.message);
+      const c: any = (claim as any)?.[0];
+      if (!c?.is_new && ["blocked", "paused", "held", "dry_run"].includes(c?.prior_status) && c?.prior_error && c.prior_error !== "scheduled_8am") {
+        // A skip from a moment ago: report the same reason, add no row.
+        out.push({ personId: p.id, name, channel: ch, status: c.prior_status, reason: c.prior_error });
+        continue;
+      }
+      if (!c?.is_new) {
+        const mins = Math.max(0, Math.floor((now.getTime() - new Date(c?.prior_at ?? now).getTime()) / 60_000));
+        out.push({ personId: p.id, name, channel: ch, status: "already_sent", reason: "already_sent", minutesAgo: mins });
+        continue;
+      }
+      if (status === "scheduled") {
+        // Checks still run now so the owner sees problems today; the 8 AM tick runs them again.
+        const info = await owners.info(s.owner_user_id);
+        const g = guardFor({ schedule: s, person: p, channel: ch, info, optedOut, smsUsed: owners.smsToday.get(s.owner_user_id) ?? 0 });
+        if ((g && g.status !== "held") || dryRun) {
+          const st = g?.status ?? "dry_run";
+          const why = g?.reason ?? "scheduled_8am";
+          await admin.from("schedule_reminder_sends").update({ status: st, error: why }).eq("id", c.send_id);
+          out.push({ personId: p.id, name, channel: ch, status: st, reason: why, at: due.toISOString() });
+        } else {
+          out.push({ personId: p.id, name, channel: ch, status: "scheduled", reason: null, at: due.toISOString() });
+        }
+        continue;
+      }
+      const r = await deliverClaimed({
+        admin, sendId: c.send_id, schedule: s, person: p, channel: ch, startsAt,
+        subject: ch === "email" ? input.subject : null,
+        body: ch === "email" ? input.emailBody : input.smsBody,
+        owners, optedOut, dryRun,
+      });
+      out.push({ personId: p.id, name, channel: ch, status: r.status, reason: r.reason });
+    }
+  }
+  return { results: out, dateLabel: whenLabel(startsAt, s.timezone) };
 }

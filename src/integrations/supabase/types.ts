@@ -3768,48 +3768,60 @@ export type Database = {
       }
       schedule_reminder_sends: {
         Row: {
+          body: string | null
           channel: string
           created_at: string
           due_at: string
           error: string | null
           id: string
+          kind: string
+          manual_send_id: string | null
           occurrence_id: string
           owner_user_id: string
           person_id: string
           sent_at: string | null
           sms_outbox_id: string | null
           status: string
-          step_id: string
+          step_id: string | null
+          subject: string | null
           updated_at: string
         }
         Insert: {
+          body?: string | null
           channel: string
           created_at?: string
           due_at: string
           error?: string | null
           id?: string
+          kind?: string
+          manual_send_id?: string | null
           occurrence_id: string
           owner_user_id: string
           person_id: string
           sent_at?: string | null
           sms_outbox_id?: string | null
           status?: string
-          step_id: string
+          step_id?: string | null
+          subject?: string | null
           updated_at?: string
         }
         Update: {
+          body?: string | null
           channel?: string
           created_at?: string
           due_at?: string
           error?: string | null
           id?: string
+          kind?: string
+          manual_send_id?: string | null
           occurrence_id?: string
           owner_user_id?: string
           person_id?: string
           sent_at?: string | null
           sms_outbox_id?: string | null
           status?: string
-          step_id?: string
+          step_id?: string | null
+          subject?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -5319,6 +5331,26 @@ export type Database = {
           should_generate: boolean
           storage_path: string
           voice_id: string
+        }[]
+      }
+      claim_manual_schedule_send: {
+        Args: {
+          _body: string
+          _channel: string
+          _due_at: string
+          _manual_send_id: string
+          _occurrence_id: string
+          _owner: string
+          _person_id: string
+          _status: string
+          _subject: string
+        }
+        Returns: {
+          is_new: boolean
+          prior_at: string
+          prior_error: string
+          prior_status: string
+          send_id: string
         }[]
       }
       claim_owner_ai_action: {
