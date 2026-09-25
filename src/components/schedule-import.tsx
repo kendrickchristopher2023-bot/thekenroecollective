@@ -14,6 +14,7 @@ interface Row {
   name: string;
   phone: string;
   email: string;
+  note: string;
   confidence: { name: number; phone: number; email: number };
   duplicate: { id: string; name: string | null; email: string | null; phone: string | null } | null;
   action: "new" | "merge" | "skip";
@@ -54,7 +55,8 @@ export function ScheduleImport({ scheduleId, isDemo, onDone }: { scheduleId: str
   const [channel, setChannel] = useState<Channel>("both");
   const [consent, setConsent] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<{ added: number; refused: { name: string; reason: string }[]; cleared: { name: string; field: string }[]; problems: string[] } | null>(null);
+  const [bigSkipOk, setBigSkipOk] = useState(false);
+  const [result, setResult] = useState<{ added: number; skipped: { name: string; reason: string }[]; refused: { name: string; reason: string }[]; cleared: { name: string; field: string }[]; problems: string[] } | null>(null);
 
   if (isDemo) {
     return (
@@ -66,7 +68,8 @@ export function ScheduleImport({ scheduleId, isDemo, onDone }: { scheduleId: str
 
   function load(list: any[], id: string | null) {
     setImportId(id);
-    setRows(list.map((r, i) => ({ key: i, name: r.name ?? "", phone: r.phone ?? "", email: r.email ?? "", confidence: r.confidence ?? { name: 1, phone: 1, email: 1 }, duplicate: r.duplicate, action: r.duplicate ? "merge" : "new" })));
+    setRows(list.map((r, i) => ({ key: i, name: r.name ?? "", phone: r.phone ?? "", email: r.email ?? "", note: r.note ?? "", confidence: r.confidence ?? { name: 1, phone: 1, email: 1 }, duplicate: r.duplicate, action: r.duplicate ? "merge" : !String(r.phone ?? "").trim() && !String(r.email ?? "").trim() ? "skip" : "new" })));
+    setBigSkipOk(false);
     if (!list.length) toast.message("We didn't find any names, phone numbers or emails in that.");
   }
 
@@ -120,13 +123,18 @@ export function ScheduleImport({ scheduleId, isDemo, onDone }: { scheduleId: str
   const active = (rows ?? []).filter((r) => r.action !== "skip");
   const blocked = active.filter((r) => !emailOk(r.email) || !phoneOk(r.phone) || (!r.email.trim() && !r.phone.trim()));
   const needsConsent = channel !== "email";
+  const skippedRows = (rows ?? []).filter((r) => r.action === "skip");
+  const skipReason = (r: Row) => (!r.phone.trim() && !r.email.trim() ? "no phone or email" : "you chose Skip");
+  const total = rows?.length ?? 0;
+  const bigSkip = total > 0 && (skippedRows.length + blocked.length) / total > 0.25;
 
   async function onConfirm() {
     if (blocked.length) return toast.error("Fix or skip the rows marked in red first.");
     if (needsConsent && !consent) return toast.error("Please confirm these people agreed to get text reminders from you.");
+    if (bigSkip && !bigSkipOk) return toast.error("Please confirm you want to leave out that many people.");
     setBusy(true);
     try {
-      const r = await confirm({ data: { importId, scheduleId, channel, smsConsent: consent, rows: rows!.map((x) => ({ name: x.name, phone: x.phone, email: x.email, action: x.action, existingId: x.action === "merge" ? x.duplicate?.id ?? null : null })) } });
+      const r = await confirm({ data: { importId, scheduleId, channel, smsConsent: consent, rows: rows!.map((x) => ({ name: x.name, phone: x.phone, email: x.email, note: x.note || undefined, action: x.action, existingId: x.action === "merge" ? x.duplicate?.id ?? null : null })) } });
       setResult(r as any);
       setRows(null); setImportId(null); setText("");
       toast.success(`Added ${r.added} ${r.added === 1 ? "person" : "people"}`);
@@ -141,7 +149,10 @@ export function ScheduleImport({ scheduleId, isDemo, onDone }: { scheduleId: str
   if (result && !rows) {
     return (
       <div className="space-y-3 rounded-2xl bg-secondary/60 p-5 text-sm">
-        <p className="font-medium">Added {result.added} {result.added === 1 ? "person" : "people"}.</p>
+        <p className="font-medium" data-testid="import-result-added">Added {result.added} {result.added === 1 ? "person" : "people"}.</p>
+        {result.skipped?.length ? (
+          <div data-testid="import-result-skipped"><p className="text-destructive">Not added, skipped ({result.skipped.length}):</p><ul className="ml-5 list-disc">{result.skipped.map((r, i) => <li key={i}>{r.name}: {r.reason}</li>)}</ul></div>
+        ) : null}
         {result.refused.length ? (
           <div><p className="text-destructive">Not saved:</p><ul className="ml-5 list-disc">{result.refused.map((r, i) => <li key={i}>{r.name}: {r.reason}</li>)}</ul></div>
         ) : null}
@@ -227,6 +238,7 @@ export function ScheduleImport({ scheduleId, isDemo, onDone }: { scheduleId: str
                     <option value="new">{r.duplicate ? "Add as a new contact" : "Add"}</option>
                     <option value="skip">Skip</option>
                   </select>
+                  {r.note ? <span className="mt-1 block text-xs text-muted-foreground">Note kept: {r.note}</span> : null}
                   {r.duplicate ? <span className="mt-1 block text-xs text-muted-foreground">Already in contacts: {r.duplicate.name || r.duplicate.email || r.duplicate.phone}</span> : null}
                 </label>
               </li>
@@ -249,9 +261,21 @@ export function ScheduleImport({ scheduleId, isDemo, onDone }: { scheduleId: str
         ) : null}
       </div>
 
+      <div className="rounded-2xl bg-secondary/60 p-4 text-sm" data-testid="import-summary" aria-live="polite">
+        <p className="font-medium">Adding {active.length - blocked.length} of {total} {total === 1 ? "person" : "people"}.</p>
+        {skippedRows.length ? (
+          <p className="mt-1">{skippedRows.length} skipped: {skippedRows.map((r) => `${r.name.trim() || r.email || r.phone || "Unnamed row"} (${skipReason(r)})`).join(", ")}.</p>
+        ) : null}
+        {bigSkip ? (
+          <label className="mt-3 flex items-start gap-3 text-destructive">
+            <input type="checkbox" className="mt-1 h-4 w-4" checked={bigSkipOk} onChange={(e) => setBigSkipOk(e.target.checked)} aria-label="Yes, leave these people out" />
+            <span>That is more than a quarter of your list. Yes, leave these people out.</span>
+          </label>
+        ) : null}
+      </div>
       {blocked.length ? <p className="text-sm text-destructive">{blocked.length} {blocked.length === 1 ? "row needs" : "rows need"} fixing or skipping before you can save.</p> : null}
       <div className="flex flex-wrap gap-3">
-        <button type="button" className="rounded-full bg-velvet px-5 py-2.5 text-sm font-medium text-primary-foreground disabled:opacity-50" disabled={busy || !active.length || blocked.length > 0 || (needsConsent && !consent)} onClick={() => void onConfirm()}>
+        <button type="button" className="rounded-full bg-velvet px-5 py-2.5 text-sm font-medium text-primary-foreground disabled:opacity-50" disabled={busy || !active.length || blocked.length > 0 || (needsConsent && !consent) || (bigSkip && !bigSkipOk)} onClick={() => void onConfirm()}>
           {busy ? "Saving..." : `Confirm and add ${active.length}`}
         </button>
         <button type="button" className="rounded-full bg-secondary px-4 py-2 text-sm" disabled={busy} onClick={() => void onDiscard()}>Discard</button>
