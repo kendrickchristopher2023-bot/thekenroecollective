@@ -3838,6 +3838,7 @@ export type Database = {
       }
       schedule_reminder_steps: {
         Row: {
+          active: boolean
           body: string
           channel: string
           created_at: string
@@ -3849,6 +3850,7 @@ export type Database = {
           subject: string | null
         }
         Insert: {
+          active?: boolean
           body: string
           channel: string
           created_at?: string
@@ -3860,6 +3862,7 @@ export type Database = {
           subject?: string | null
         }
         Update: {
+          active?: boolean
           body?: string
           channel?: string
           created_at?: string
