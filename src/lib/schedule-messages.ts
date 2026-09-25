@@ -106,3 +106,15 @@ export function complianceIntro(hostName: string): string {
   return `Kenroe reminders from ${hostName || "your host"}: `;
 }
 export const STOP_LINE = " Reply STOP to opt out.";
+
+const GSM = /^[A-Za-z0-9 @£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ!"#¤%&'()*+,\-./:;<=>?¡ÄÖÑÜ§¿äöñüà^{}\\[~\]|€]*$/;
+
+/** Characters and text segments, the way carriers count them. */
+export function smsSegments(text: string): { chars: number; segments: number; unicode: boolean } {
+  const unicode = !GSM.test(text);
+  const chars = [...text].length;
+  const single = unicode ? 70 : 160;
+  const multi = unicode ? 67 : 153;
+  const segments = chars === 0 ? 0 : chars <= single ? 1 : Math.ceil(chars / multi);
+  return { chars, segments, unicode };
+}
