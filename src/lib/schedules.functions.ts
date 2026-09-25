@@ -61,7 +61,9 @@ export const getScheduleAccess = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data } = await (context.supabase as any).rpc("i_can_use_schedules");
     const { data: own } = await context.supabase.rpc("has_role", { _user_id: context.userId, _role: "owner" });
-    return { canUse: data === true, isOwner: own === true };
+    const { isDemoCaller } = await import("@/lib/demo-mode.server");
+    const isDemo = await isDemoCaller(context as any).catch(() => true);
+    return { canUse: data === true, isOwner: own === true, isDemo };
   });
 
 export const listSchedules = createServerFn({ method: "GET" })
@@ -521,12 +523,27 @@ export const confirmContactImport = createServerFn({ method: "POST" })
     }
     const ids: string[] = [];
     const problems: string[] = [];
+    const refused: { name: string; reason: string }[] = [];
+    const cleared: { name: string; field: "email" | "phone" }[] = [];
+    const { toE164, validEmail } = await import("@/lib/contact-import.server");
     for (const r of data.rows) {
       if (r.action === "skip") continue;
+      // The server is the real guard: an invalid value is never saved.
+      const label = r.name.trim() || r.email.trim() || r.phone.trim() || "Unnamed row";
+      const rawEmail = r.email.trim().toLowerCase();
+      const rawPhone = r.phone.trim();
+      const email = rawEmail && validEmail(rawEmail) ? rawEmail : "";
+      const phone = rawPhone ? toE164(rawPhone) : "";
+      if (!email && !phone) {
+        refused.push({ name: label, reason: rawEmail || rawPhone ? "The email and phone are not valid, so there is no way to reach this person." : "This row has no email or phone." });
+        continue;
+      }
+      if (rawEmail && !email) cleared.push({ name: label, field: "email" });
+      if (rawPhone && !phone) cleared.push({ name: label, field: "phone" });
       try {
-        ids.push(await upsertContact(sb, context.userId, { name: r.name, phone: r.phone, email: r.email }, r.action === "merge" ? r.existingId : null));
+        ids.push(await upsertContact(sb, context.userId, { name: r.name, phone, email }, r.action === "merge" ? r.existingId : null));
       } catch (e) {
-        problems.push(`${r.name || r.email || r.phone}: ${(e as Error).message}`);
+        problems.push(`${label}: ${(e as Error).message}`);
       }
     }
     const now = new Date().toISOString();
@@ -546,7 +563,7 @@ export const confirmContactImport = createServerFn({ method: "POST" })
         await (supabaseAdmin as any).from("contact_imports").update({ status: "confirmed", storage_path: null }).eq("id", data.importId);
       }
     }
-    return { added: unique.length, problems };
+    return { added: unique.length, problems, refused, cleared };
   });
 
 // ---------------- Owner tools ----------------
