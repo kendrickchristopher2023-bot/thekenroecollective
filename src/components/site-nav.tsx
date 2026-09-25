@@ -54,7 +54,8 @@ type CollectiveTo =
   | "/vendors"
   | "/studio"
   | "/ecards"
-  | "/contacts";
+  | "/contacts"
+  | "/schedules";
 
 type CollectiveItem = {
   to: CollectiveTo;
@@ -155,6 +156,15 @@ const COLLECTIVE_ITEMS: CollectiveItem[] = [
     blurb: "Your saved guests, reuse them on any event.",
     Icon: UserIcon,
     badge: "Atelier plan",
+    requiresAuth: true,
+    group: "mine",
+  },
+  {
+    to: "/schedules",
+    label: "My schedules",
+    blurb: "Repeating calls with automatic email and text reminders.",
+    Icon: CalendarHeartIcon,
+    badge: "Host and Atelier",
     requiresAuth: true,
     group: "mine",
   },
