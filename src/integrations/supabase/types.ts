@@ -5576,6 +5576,7 @@ export type Database = {
         Returns: boolean
       }
       has_verified_mfa: { Args: { _user_id: string }; Returns: boolean }
+      i_can_use_schedules: { Args: never; Returns: boolean }
       increment_discount_usage: {
         Args: { discount_code: string }
         Returns: undefined
