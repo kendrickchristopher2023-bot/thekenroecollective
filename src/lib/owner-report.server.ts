@@ -471,6 +471,7 @@ export async function loadProduct(
     : (prefixFilter("route", (VENTURE_ROUTE_PREFIXES as any)[venture]) ?? undefined);
 
   const withStatus = (status: string) => (q: any) => q.eq("status", status);
+  const withStatusIn = (statuses: string[]) => (q: any) => q.in("status", statuses);
   // Demo and showcase accounts never count toward the owner's numbers.
   const { getDemoUserIds } = await import("@/lib/demo-accounts.server");
   const demoIds = await getDemoUserIds().catch(() => [] as string[]);
@@ -504,7 +505,7 @@ export async function loadProduct(
           since,
           until,
           "created_at",
-          combine(withStatus("sent"), emailFilter ?? null),
+          combine(withStatusIn(["sent","delivered"]), emailFilter ?? null),
         )
       : 0,
     ownTables
@@ -517,7 +518,7 @@ export async function loadProduct(
         )
       : 0,
     isEvents
-      ? countRows("sms_outbox", since, until, "created_at", combine(withStatus("sent"), notDemo("user_id")))
+      ? countRows("sms_outbox", since, until, "created_at", combine(withStatusIn(["sent","delivered"]), notDemo("user_id")))
       : 0,
     isEvents
       ? countRows("sms_outbox", since, until, "created_at", combine(withStatus("failed"), notDemo("user_id")))
@@ -532,7 +533,7 @@ export async function loadProduct(
           since,
           until,
           "created_at",
-          combine(withStatus("sent"), emailFilter ?? null),
+          combine(withStatusIn(["sent","delivered"]), emailFilter ?? null),
         )
       : ZERO_SERIES(since, until),
     isEvents
@@ -541,7 +542,7 @@ export async function loadProduct(
           since,
           until,
           "created_at",
-          combine(withStatus("sent"), notDemo("user_id")),
+          combine(withStatusIn(["sent","delivered"]), notDemo("user_id")),
         )
       : ZERO_SERIES(since, until),
   ]);

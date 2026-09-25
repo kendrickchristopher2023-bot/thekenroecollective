@@ -927,6 +927,39 @@ export type Database = {
         }
         Relationships: []
       }
+      contact_imports: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          owner_user_id: string
+          row_count: number | null
+          status: string
+          storage_path: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          owner_user_id: string
+          row_count?: number | null
+          status?: string
+          storage_path?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          owner_user_id?: string
+          row_count?: number | null
+          status?: string
+          storage_path?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       contacts: {
         Row: {
           created_at: string
@@ -936,6 +969,7 @@ export type Database = {
           email_opt_out: boolean
           first_seen_event_id: string | null
           id: string
+          merged_into: string | null
           notes: string | null
           owner_user_id: string
           phone: string | null
@@ -952,6 +986,7 @@ export type Database = {
           email_opt_out?: boolean
           first_seen_event_id?: string | null
           id?: string
+          merged_into?: string | null
           notes?: string | null
           owner_user_id: string
           phone?: string | null
@@ -968,6 +1003,7 @@ export type Database = {
           email_opt_out?: boolean
           first_seen_event_id?: string | null
           id?: string
+          merged_into?: string | null
           notes?: string | null
           owner_user_id?: string
           phone?: string | null
@@ -976,7 +1012,15 @@ export type Database = {
           tags?: string[]
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "contacts_merged_into_fkey"
+            columns: ["merged_into"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       data_cleanup_log: {
         Row: {
@@ -3580,6 +3624,354 @@ export type Database = {
           },
         ]
       }
+      schedule_exceptions: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          new_duration_minutes: number | null
+          new_start_local: string | null
+          note: string | null
+          original_local: string
+          schedule_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          new_duration_minutes?: number | null
+          new_start_local?: string | null
+          note?: string | null
+          original_local: string
+          schedule_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          new_duration_minutes?: number | null
+          new_start_local?: string | null
+          note?: string | null
+          original_local?: string
+          schedule_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_exceptions_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "schedules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      schedule_occurrences: {
+        Row: {
+          created_at: string
+          ends_at: string
+          id: string
+          occurrence_local: string
+          schedule_id: string
+          start_local: string
+          starts_at: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          ends_at: string
+          id?: string
+          occurrence_local: string
+          schedule_id: string
+          start_local: string
+          starts_at: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          ends_at?: string
+          id?: string
+          occurrence_local?: string
+          schedule_id?: string
+          start_local?: string
+          starts_at?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_occurrences_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "schedules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      schedule_people: {
+        Row: {
+          channel: string
+          contact_id: string
+          created_at: string
+          first_sms_sent_at: string | null
+          id: string
+          paused: boolean
+          removed_at: string | null
+          rsvp_token: string
+          schedule_id: string
+          sms_consent_at: string | null
+          sms_consent_by: string | null
+          updated_at: string
+        }
+        Insert: {
+          channel?: string
+          contact_id: string
+          created_at?: string
+          first_sms_sent_at?: string | null
+          id?: string
+          paused?: boolean
+          removed_at?: string | null
+          rsvp_token?: string
+          schedule_id: string
+          sms_consent_at?: string | null
+          sms_consent_by?: string | null
+          updated_at?: string
+        }
+        Update: {
+          channel?: string
+          contact_id?: string
+          created_at?: string
+          first_sms_sent_at?: string | null
+          id?: string
+          paused?: boolean
+          removed_at?: string | null
+          rsvp_token?: string
+          schedule_id?: string
+          sms_consent_at?: string | null
+          sms_consent_by?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_people_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_people_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "schedules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      schedule_reminder_sends: {
+        Row: {
+          channel: string
+          created_at: string
+          due_at: string
+          error: string | null
+          id: string
+          occurrence_id: string
+          owner_user_id: string
+          person_id: string
+          sent_at: string | null
+          sms_outbox_id: string | null
+          status: string
+          step_id: string
+          updated_at: string
+        }
+        Insert: {
+          channel: string
+          created_at?: string
+          due_at: string
+          error?: string | null
+          id?: string
+          occurrence_id: string
+          owner_user_id: string
+          person_id: string
+          sent_at?: string | null
+          sms_outbox_id?: string | null
+          status?: string
+          step_id: string
+          updated_at?: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          due_at?: string
+          error?: string | null
+          id?: string
+          occurrence_id?: string
+          owner_user_id?: string
+          person_id?: string
+          sent_at?: string | null
+          sms_outbox_id?: string | null
+          status?: string
+          step_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_reminder_sends_occurrence_id_fkey"
+            columns: ["occurrence_id"]
+            isOneToOne: false
+            referencedRelation: "schedule_occurrences"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_reminder_sends_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "schedule_people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_reminder_sends_step_id_fkey"
+            columns: ["step_id"]
+            isOneToOne: false
+            referencedRelation: "schedule_reminder_steps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      schedule_reminder_steps: {
+        Row: {
+          active: boolean
+          body: string
+          channel: string
+          created_at: string
+          id: string
+          is_starting_now: boolean
+          offset_minutes: number
+          position: number
+          schedule_id: string
+          subject: string | null
+        }
+        Insert: {
+          active?: boolean
+          body: string
+          channel: string
+          created_at?: string
+          id?: string
+          is_starting_now?: boolean
+          offset_minutes: number
+          position?: number
+          schedule_id: string
+          subject?: string | null
+        }
+        Update: {
+          active?: boolean
+          body?: string
+          channel?: string
+          created_at?: string
+          id?: string
+          is_starting_now?: boolean
+          offset_minutes?: number
+          position?: number
+          schedule_id?: string
+          subject?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_reminder_steps_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "schedules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      schedules: {
+        Row: {
+          created_at: string
+          description: string | null
+          dial_in: string | null
+          dial_pin: string | null
+          duration_minutes: number
+          ends_kind: string
+          horizon_until: string | null
+          id: string
+          is_demo: boolean
+          join_url: string | null
+          kind: string
+          location: string | null
+          occurrence_count: number | null
+          owner_user_id: string
+          parent_schedule_id: string | null
+          rrule: string | null
+          source_id: string | null
+          source_type: string | null
+          start_local: string
+          status: string
+          timezone: string
+          title: string
+          until_local: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          dial_in?: string | null
+          dial_pin?: string | null
+          duration_minutes?: number
+          ends_kind?: string
+          horizon_until?: string | null
+          id?: string
+          is_demo?: boolean
+          join_url?: string | null
+          kind?: string
+          location?: string | null
+          occurrence_count?: number | null
+          owner_user_id: string
+          parent_schedule_id?: string | null
+          rrule?: string | null
+          source_id?: string | null
+          source_type?: string | null
+          start_local: string
+          status?: string
+          timezone?: string
+          title: string
+          until_local?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          dial_in?: string | null
+          dial_pin?: string | null
+          duration_minutes?: number
+          ends_kind?: string
+          horizon_until?: string | null
+          id?: string
+          is_demo?: boolean
+          join_url?: string | null
+          kind?: string
+          location?: string | null
+          occurrence_count?: number | null
+          owner_user_id?: string
+          parent_schedule_id?: string | null
+          rrule?: string | null
+          source_id?: string | null
+          source_type?: string | null
+          start_local?: string
+          status?: string
+          timezone?: string
+          title?: string
+          until_local?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedules_parent_schedule_id_fkey"
+            columns: ["parent_schedule_id"]
+            isOneToOne: false
+            referencedRelation: "schedules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       showcase_interactions: {
         Row: {
           created_at: string
@@ -4885,6 +5277,7 @@ export type Database = {
         Args: { _event_id: string; _user_id: string }
         Returns: boolean
       }
+      can_use_schedules: { Args: { _uid: string }; Returns: boolean }
       cancel_account_deletion: { Args: never; Returns: boolean }
       check_auth_rate_limit: {
         Args: { _key: string; _max?: number; _window_minutes?: number }
@@ -5186,6 +5579,7 @@ export type Database = {
         Returns: boolean
       }
       has_verified_mfa: { Args: { _user_id: string }; Returns: boolean }
+      i_can_use_schedules: { Args: never; Returns: boolean }
       increment_discount_usage: {
         Args: { discount_code: string }
         Returns: undefined
@@ -5275,6 +5669,7 @@ export type Database = {
         Args: { _rfq_id: string; _user_id: string }
         Returns: boolean
       }
+      owns_schedule: { Args: { _sid: string }; Returns: boolean }
       pass_active_for_event: {
         Args: { _event: string; _tier: string; _user: string }
         Returns: boolean

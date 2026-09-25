@@ -34,12 +34,19 @@ export const Route = createFileRoute("/api/public/hooks/sms-status-webhook")({
 
         const rawBody = await request.text();
         const params = new URLSearchParams(rawBody);
-        const ok = validateTwilioFormSignature({
-          authToken,
-          signatureHeader: request.headers.get("x-twilio-signature"),
-          url: request.url,
-          params,
-        });
+        // Twilio signs the exact public URL it called. Behind the hosting edge
+        // request.url can differ (http vs https, internal host), so accept the
+        // signature against the request URL or the fixed public address.
+        const candidates = new Set<string>([request.url]);
+        try {
+          const u = new URL(request.url);
+          const fwdHost = request.headers.get("x-forwarded-host") || request.headers.get("host");
+          candidates.add(`https://${fwdHost || u.host}${u.pathname}${u.search}`);
+        } catch { /* ignore */ }
+        candidates.add("https://project--c5d156bb-c400-47bc-93a7-1a8a2490a6ed.lovable.app/api/public/hooks/sms-status-webhook");
+        const sig = request.headers.get("x-twilio-signature");
+        const ok = [...candidates].some((url) => validateTwilioFormSignature({ authToken, signatureHeader: sig, url, params }));
+        if (!ok) console.warn("sms-status-webhook: signature rejected", { tried: [...candidates] });
         if (!ok) {
           return new Response("Invalid signature", { status: 403 });
         }
@@ -71,7 +78,7 @@ export const Route = createFileRoute("/api/public/hooks/sms-status-webhook")({
             errorMessage ? `: ${errorMessage}` : ""
           }`.slice(0, 500);
         } else if (messageStatus === "delivered") {
-          update.status = "sent";
+          update.status = "delivered";
           update.error = null;
         } else {
           // 'sent', 'queued', 'sending' — leave row as-is if it's already sent.
@@ -84,6 +91,14 @@ export const Route = createFileRoute("/api/public/hooks/sms-status-webhook")({
           .eq("provider_sid", messageSid);
         if (error) {
           return Response.json({ error: error.message }, { status: 500 });
+        }
+        // Keep the Schedules delivery record in step with the text itself.
+        const { data: ob } = await admin.from("sms_outbox").select("id").eq("provider_sid", messageSid).maybeSingle();
+        if (ob) {
+          await admin
+            .from("schedule_reminder_sends")
+            .update({ status: isFailure ? "failed" : "delivered", error: isFailure ? (update.error as string) : null })
+            .eq("sms_outbox_id", (ob as { id: string }).id);
         }
 
         return Response.json({ ok: true, messageSid, messageStatus });

@@ -97,10 +97,11 @@ export const Route = createFileRoute("/api/public/hooks/sms-outbox-drain")({
 
         // Absolute status callback URL — derived from the incoming request so
         // it points at whichever host Twilio can reach (preview vs production).
-        const statusCallbackUrl = new URL(
-          "/api/public/hooks/sms-status-webhook",
-          request.url,
-        ).toString();
+        // Fixed, public https address. Built from the incoming request before,
+        // which gave Twilio an address that did not match what the webhook
+        // later checked the signature against, so every callback was refused.
+        const statusCallbackUrl =
+          "https://project--c5d156bb-c400-47bc-93a7-1a8a2490a6ed.lovable.app/api/public/hooks/sms-status-webhook";
 
         let sent = 0;
         let failed = 0;

@@ -82,6 +82,7 @@ import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } fr
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as WallEventIdIndexRouteImport } from './routes/wall.$eventId.index'
 import { Route as EventsEventIdIndexRouteImport } from './routes/events.$eventId.index'
+import { Route as AuthenticatedSchedulesIndexRouteImport } from './routes/_authenticated/schedules.index'
 import { Route as AuthenticatedRfqIndexRouteImport } from './routes/_authenticated/rfq.index'
 import { Route as AuthenticatedProjectsIndexRouteImport } from './routes/_authenticated/projects.index'
 import { Route as AuthenticatedEcardsIndexRouteImport } from './routes/_authenticated/ecards.index'
@@ -95,6 +96,7 @@ import { Route as ApiPublicBrandPackRouteImport } from './routes/api/public/bran
 import { Route as ApiPublicBackupArchiveRouteImport } from './routes/api/public/backup-archive'
 import { Route as AuthenticatedToolsConverterRouteImport } from './routes/_authenticated/tools.converter'
 import { Route as AuthenticatedSettingsBillingRouteImport } from './routes/_authenticated/settings.billing'
+import { Route as AuthenticatedSchedulesIdRouteImport } from './routes/_authenticated/schedules.$id'
 import { Route as AuthenticatedRfqRfqIdRouteImport } from './routes/_authenticated/rfq.$rfqId'
 import { Route as AuthenticatedProjectsProjectIdRouteImport } from './routes/_authenticated/projects.$projectId'
 import { Route as AuthenticatedEcardsNewRouteImport } from './routes/_authenticated/ecards.new'
@@ -109,6 +111,7 @@ import { Route as ApiPublicVendorDiscoverySearchRouteImport } from './routes/api
 import { Route as ApiPublicVendorDiscoveryPhotoRouteImport } from './routes/api/public/vendor-discovery/photo'
 import { Route as ApiPublicVendorDiscoveryDetailsRouteImport } from './routes/api/public/vendor-discovery/details'
 import { Route as ApiPublicVcardSlugRouteImport } from './routes/api/public/vcard.$slug'
+import { Route as ApiPublicScheduleCalendarTokenRouteImport } from './routes/api/public/schedule-calendar.$token'
 import { Route as ApiPublicPlaylistZipKeyRouteImport } from './routes/api/public/playlist-zip.$key'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 import { Route as ApiPublicHooksVendorSearchCacheCleanupRouteImport } from './routes/api/public/hooks/vendor-search-cache-cleanup'
@@ -116,6 +119,7 @@ import { Route as ApiPublicHooksStorageBackupRouteImport } from './routes/api/pu
 import { Route as ApiPublicHooksSmsStatusWebhookRouteImport } from './routes/api/public/hooks/sms-status-webhook'
 import { Route as ApiPublicHooksSmsOutboxDrainRouteImport } from './routes/api/public/hooks/sms-outbox-drain'
 import { Route as ApiPublicHooksSmsOptOutWebhookRouteImport } from './routes/api/public/hooks/sms-opt-out-webhook'
+import { Route as ApiPublicHooksScheduleRemindersRouteImport } from './routes/api/public/hooks/schedule-reminders'
 import { Route as ApiPublicHooksRsvpRemindersRouteImport } from './routes/api/public/hooks/rsvp-reminders'
 import { Route as ApiPublicHooksPaymentRemindersRouteImport } from './routes/api/public/hooks/payment-reminders'
 import { Route as ApiPublicHooksJoinRequestRemindersRouteImport } from './routes/api/public/hooks/join-request-reminders'
@@ -509,6 +513,12 @@ const EventsEventIdIndexRoute = EventsEventIdIndexRouteImport.update({
   path: '/events/$eventId/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedSchedulesIndexRoute =
+  AuthenticatedSchedulesIndexRouteImport.update({
+    id: '/schedules/',
+    path: '/schedules/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedRfqIndexRoute = AuthenticatedRfqIndexRouteImport.update({
   id: '/rfq/',
   path: '/rfq/',
@@ -577,6 +587,12 @@ const AuthenticatedSettingsBillingRoute =
   AuthenticatedSettingsBillingRouteImport.update({
     id: '/settings/billing',
     path: '/settings/billing',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedSchedulesIdRoute =
+  AuthenticatedSchedulesIdRouteImport.update({
+    id: '/schedules/$id',
+    path: '/schedules/$id',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedRfqRfqIdRoute = AuthenticatedRfqRfqIdRouteImport.update({
@@ -656,6 +672,12 @@ const ApiPublicVcardSlugRoute = ApiPublicVcardSlugRouteImport.update({
   path: '/api/public/vcard/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicScheduleCalendarTokenRoute =
+  ApiPublicScheduleCalendarTokenRouteImport.update({
+    id: '/api/public/schedule-calendar/$token',
+    path: '/api/public/schedule-calendar/$token',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicPlaylistZipKeyRoute = ApiPublicPlaylistZipKeyRouteImport.update({
   id: '/api/public/playlist-zip/$key',
   path: '/api/public/playlist-zip/$key',
@@ -695,6 +717,12 @@ const ApiPublicHooksSmsOptOutWebhookRoute =
   ApiPublicHooksSmsOptOutWebhookRouteImport.update({
     id: '/api/public/hooks/sms-opt-out-webhook',
     path: '/api/public/hooks/sms-opt-out-webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksScheduleRemindersRoute =
+  ApiPublicHooksScheduleRemindersRouteImport.update({
+    id: '/api/public/hooks/schedule-reminders',
+    path: '/api/public/hooks/schedule-reminders',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiPublicHooksRsvpRemindersRoute =
@@ -899,6 +927,7 @@ export interface FileRoutesByFullPath {
   '/ecards/new': typeof AuthenticatedEcardsNewRoute
   '/projects/$projectId': typeof AuthenticatedProjectsProjectIdRoute
   '/rfq/$rfqId': typeof AuthenticatedRfqRfqIdRoute
+  '/schedules/$id': typeof AuthenticatedSchedulesIdRoute
   '/settings/billing': typeof AuthenticatedSettingsBillingRoute
   '/tools/converter': typeof AuthenticatedToolsConverterRoute
   '/api/public/backup-archive': typeof ApiPublicBackupArchiveRoute
@@ -912,6 +941,7 @@ export interface FileRoutesByFullPath {
   '/ecards/': typeof AuthenticatedEcardsIndexRoute
   '/projects/': typeof AuthenticatedProjectsIndexRoute
   '/rfq/': typeof AuthenticatedRfqIndexRoute
+  '/schedules/': typeof AuthenticatedSchedulesIndexRoute
   '/events/$eventId/': typeof EventsEventIdIndexRoute
   '/wall/$eventId/': typeof WallEventIdIndexRoute
   '/projects/accept-invite/$token': typeof AuthenticatedProjectsAcceptInviteTokenRoute
@@ -935,6 +965,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/join-request-reminders': typeof ApiPublicHooksJoinRequestRemindersRoute
   '/api/public/hooks/payment-reminders': typeof ApiPublicHooksPaymentRemindersRoute
   '/api/public/hooks/rsvp-reminders': typeof ApiPublicHooksRsvpRemindersRoute
+  '/api/public/hooks/schedule-reminders': typeof ApiPublicHooksScheduleRemindersRoute
   '/api/public/hooks/sms-opt-out-webhook': typeof ApiPublicHooksSmsOptOutWebhookRoute
   '/api/public/hooks/sms-outbox-drain': typeof ApiPublicHooksSmsOutboxDrainRoute
   '/api/public/hooks/sms-status-webhook': typeof ApiPublicHooksSmsStatusWebhookRoute
@@ -942,6 +973,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/vendor-search-cache-cleanup': typeof ApiPublicHooksVendorSearchCacheCleanupRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/api/public/playlist-zip/$key': typeof ApiPublicPlaylistZipKeyRoute
+  '/api/public/schedule-calendar/$token': typeof ApiPublicScheduleCalendarTokenRoute
   '/api/public/vcard/$slug': typeof ApiPublicVcardSlugRoute
   '/api/public/vendor-discovery/details': typeof ApiPublicVendorDiscoveryDetailsRoute
   '/api/public/vendor-discovery/photo': typeof ApiPublicVendorDiscoveryPhotoRoute
@@ -1027,6 +1059,7 @@ export interface FileRoutesByTo {
   '/ecards/new': typeof AuthenticatedEcardsNewRoute
   '/projects/$projectId': typeof AuthenticatedProjectsProjectIdRoute
   '/rfq/$rfqId': typeof AuthenticatedRfqRfqIdRoute
+  '/schedules/$id': typeof AuthenticatedSchedulesIdRoute
   '/settings/billing': typeof AuthenticatedSettingsBillingRoute
   '/tools/converter': typeof AuthenticatedToolsConverterRoute
   '/api/public/backup-archive': typeof ApiPublicBackupArchiveRoute
@@ -1040,6 +1073,7 @@ export interface FileRoutesByTo {
   '/ecards': typeof AuthenticatedEcardsIndexRoute
   '/projects': typeof AuthenticatedProjectsIndexRoute
   '/rfq': typeof AuthenticatedRfqIndexRoute
+  '/schedules': typeof AuthenticatedSchedulesIndexRoute
   '/events/$eventId': typeof EventsEventIdIndexRoute
   '/wall/$eventId': typeof WallEventIdIndexRoute
   '/projects/accept-invite/$token': typeof AuthenticatedProjectsAcceptInviteTokenRoute
@@ -1063,6 +1097,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/join-request-reminders': typeof ApiPublicHooksJoinRequestRemindersRoute
   '/api/public/hooks/payment-reminders': typeof ApiPublicHooksPaymentRemindersRoute
   '/api/public/hooks/rsvp-reminders': typeof ApiPublicHooksRsvpRemindersRoute
+  '/api/public/hooks/schedule-reminders': typeof ApiPublicHooksScheduleRemindersRoute
   '/api/public/hooks/sms-opt-out-webhook': typeof ApiPublicHooksSmsOptOutWebhookRoute
   '/api/public/hooks/sms-outbox-drain': typeof ApiPublicHooksSmsOutboxDrainRoute
   '/api/public/hooks/sms-status-webhook': typeof ApiPublicHooksSmsStatusWebhookRoute
@@ -1070,6 +1105,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/vendor-search-cache-cleanup': typeof ApiPublicHooksVendorSearchCacheCleanupRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/api/public/playlist-zip/$key': typeof ApiPublicPlaylistZipKeyRoute
+  '/api/public/schedule-calendar/$token': typeof ApiPublicScheduleCalendarTokenRoute
   '/api/public/vcard/$slug': typeof ApiPublicVcardSlugRoute
   '/api/public/vendor-discovery/details': typeof ApiPublicVendorDiscoveryDetailsRoute
   '/api/public/vendor-discovery/photo': typeof ApiPublicVendorDiscoveryPhotoRoute
@@ -1158,6 +1194,7 @@ export interface FileRoutesById {
   '/_authenticated/ecards/new': typeof AuthenticatedEcardsNewRoute
   '/_authenticated/projects/$projectId': typeof AuthenticatedProjectsProjectIdRoute
   '/_authenticated/rfq/$rfqId': typeof AuthenticatedRfqRfqIdRoute
+  '/_authenticated/schedules/$id': typeof AuthenticatedSchedulesIdRoute
   '/_authenticated/settings/billing': typeof AuthenticatedSettingsBillingRoute
   '/_authenticated/tools/converter': typeof AuthenticatedToolsConverterRoute
   '/api/public/backup-archive': typeof ApiPublicBackupArchiveRoute
@@ -1171,6 +1208,7 @@ export interface FileRoutesById {
   '/_authenticated/ecards/': typeof AuthenticatedEcardsIndexRoute
   '/_authenticated/projects/': typeof AuthenticatedProjectsIndexRoute
   '/_authenticated/rfq/': typeof AuthenticatedRfqIndexRoute
+  '/_authenticated/schedules/': typeof AuthenticatedSchedulesIndexRoute
   '/events/$eventId/': typeof EventsEventIdIndexRoute
   '/wall/$eventId/': typeof WallEventIdIndexRoute
   '/_authenticated/projects/accept-invite/$token': typeof AuthenticatedProjectsAcceptInviteTokenRoute
@@ -1194,6 +1232,7 @@ export interface FileRoutesById {
   '/api/public/hooks/join-request-reminders': typeof ApiPublicHooksJoinRequestRemindersRoute
   '/api/public/hooks/payment-reminders': typeof ApiPublicHooksPaymentRemindersRoute
   '/api/public/hooks/rsvp-reminders': typeof ApiPublicHooksRsvpRemindersRoute
+  '/api/public/hooks/schedule-reminders': typeof ApiPublicHooksScheduleRemindersRoute
   '/api/public/hooks/sms-opt-out-webhook': typeof ApiPublicHooksSmsOptOutWebhookRoute
   '/api/public/hooks/sms-outbox-drain': typeof ApiPublicHooksSmsOutboxDrainRoute
   '/api/public/hooks/sms-status-webhook': typeof ApiPublicHooksSmsStatusWebhookRoute
@@ -1201,6 +1240,7 @@ export interface FileRoutesById {
   '/api/public/hooks/vendor-search-cache-cleanup': typeof ApiPublicHooksVendorSearchCacheCleanupRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/api/public/playlist-zip/$key': typeof ApiPublicPlaylistZipKeyRoute
+  '/api/public/schedule-calendar/$token': typeof ApiPublicScheduleCalendarTokenRoute
   '/api/public/vcard/$slug': typeof ApiPublicVcardSlugRoute
   '/api/public/vendor-discovery/details': typeof ApiPublicVendorDiscoveryDetailsRoute
   '/api/public/vendor-discovery/photo': typeof ApiPublicVendorDiscoveryPhotoRoute
@@ -1289,6 +1329,7 @@ export interface FileRouteTypes {
     | '/ecards/new'
     | '/projects/$projectId'
     | '/rfq/$rfqId'
+    | '/schedules/$id'
     | '/settings/billing'
     | '/tools/converter'
     | '/api/public/backup-archive'
@@ -1302,6 +1343,7 @@ export interface FileRouteTypes {
     | '/ecards/'
     | '/projects/'
     | '/rfq/'
+    | '/schedules/'
     | '/events/$eventId/'
     | '/wall/$eventId/'
     | '/projects/accept-invite/$token'
@@ -1325,6 +1367,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/join-request-reminders'
     | '/api/public/hooks/payment-reminders'
     | '/api/public/hooks/rsvp-reminders'
+    | '/api/public/hooks/schedule-reminders'
     | '/api/public/hooks/sms-opt-out-webhook'
     | '/api/public/hooks/sms-outbox-drain'
     | '/api/public/hooks/sms-status-webhook'
@@ -1332,6 +1375,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/vendor-search-cache-cleanup'
     | '/api/public/payments/webhook'
     | '/api/public/playlist-zip/$key'
+    | '/api/public/schedule-calendar/$token'
     | '/api/public/vcard/$slug'
     | '/api/public/vendor-discovery/details'
     | '/api/public/vendor-discovery/photo'
@@ -1417,6 +1461,7 @@ export interface FileRouteTypes {
     | '/ecards/new'
     | '/projects/$projectId'
     | '/rfq/$rfqId'
+    | '/schedules/$id'
     | '/settings/billing'
     | '/tools/converter'
     | '/api/public/backup-archive'
@@ -1430,6 +1475,7 @@ export interface FileRouteTypes {
     | '/ecards'
     | '/projects'
     | '/rfq'
+    | '/schedules'
     | '/events/$eventId'
     | '/wall/$eventId'
     | '/projects/accept-invite/$token'
@@ -1453,6 +1499,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/join-request-reminders'
     | '/api/public/hooks/payment-reminders'
     | '/api/public/hooks/rsvp-reminders'
+    | '/api/public/hooks/schedule-reminders'
     | '/api/public/hooks/sms-opt-out-webhook'
     | '/api/public/hooks/sms-outbox-drain'
     | '/api/public/hooks/sms-status-webhook'
@@ -1460,6 +1507,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/vendor-search-cache-cleanup'
     | '/api/public/payments/webhook'
     | '/api/public/playlist-zip/$key'
+    | '/api/public/schedule-calendar/$token'
     | '/api/public/vcard/$slug'
     | '/api/public/vendor-discovery/details'
     | '/api/public/vendor-discovery/photo'
@@ -1547,6 +1595,7 @@ export interface FileRouteTypes {
     | '/_authenticated/ecards/new'
     | '/_authenticated/projects/$projectId'
     | '/_authenticated/rfq/$rfqId'
+    | '/_authenticated/schedules/$id'
     | '/_authenticated/settings/billing'
     | '/_authenticated/tools/converter'
     | '/api/public/backup-archive'
@@ -1560,6 +1609,7 @@ export interface FileRouteTypes {
     | '/_authenticated/ecards/'
     | '/_authenticated/projects/'
     | '/_authenticated/rfq/'
+    | '/_authenticated/schedules/'
     | '/events/$eventId/'
     | '/wall/$eventId/'
     | '/_authenticated/projects/accept-invite/$token'
@@ -1583,6 +1633,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/join-request-reminders'
     | '/api/public/hooks/payment-reminders'
     | '/api/public/hooks/rsvp-reminders'
+    | '/api/public/hooks/schedule-reminders'
     | '/api/public/hooks/sms-opt-out-webhook'
     | '/api/public/hooks/sms-outbox-drain'
     | '/api/public/hooks/sms-status-webhook'
@@ -1590,6 +1641,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/vendor-search-cache-cleanup'
     | '/api/public/payments/webhook'
     | '/api/public/playlist-zip/$key'
+    | '/api/public/schedule-calendar/$token'
     | '/api/public/vcard/$slug'
     | '/api/public/vendor-discovery/details'
     | '/api/public/vendor-discovery/photo'
@@ -1688,6 +1740,7 @@ export interface RootRouteChildren {
   ApiPublicHooksJoinRequestRemindersRoute: typeof ApiPublicHooksJoinRequestRemindersRoute
   ApiPublicHooksPaymentRemindersRoute: typeof ApiPublicHooksPaymentRemindersRoute
   ApiPublicHooksRsvpRemindersRoute: typeof ApiPublicHooksRsvpRemindersRoute
+  ApiPublicHooksScheduleRemindersRoute: typeof ApiPublicHooksScheduleRemindersRoute
   ApiPublicHooksSmsOptOutWebhookRoute: typeof ApiPublicHooksSmsOptOutWebhookRoute
   ApiPublicHooksSmsOutboxDrainRoute: typeof ApiPublicHooksSmsOutboxDrainRoute
   ApiPublicHooksSmsStatusWebhookRoute: typeof ApiPublicHooksSmsStatusWebhookRoute
@@ -1695,6 +1748,7 @@ export interface RootRouteChildren {
   ApiPublicHooksVendorSearchCacheCleanupRoute: typeof ApiPublicHooksVendorSearchCacheCleanupRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
   ApiPublicPlaylistZipKeyRoute: typeof ApiPublicPlaylistZipKeyRoute
+  ApiPublicScheduleCalendarTokenRoute: typeof ApiPublicScheduleCalendarTokenRoute
   ApiPublicVcardSlugRoute: typeof ApiPublicVcardSlugRoute
   ApiPublicVendorDiscoveryDetailsRoute: typeof ApiPublicVendorDiscoveryDetailsRoute
   ApiPublicVendorDiscoveryPhotoRoute: typeof ApiPublicVendorDiscoveryPhotoRoute
@@ -2217,6 +2271,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EventsEventIdIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/schedules/': {
+      id: '/_authenticated/schedules/'
+      path: '/schedules'
+      fullPath: '/schedules/'
+      preLoaderRoute: typeof AuthenticatedSchedulesIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/rfq/': {
       id: '/_authenticated/rfq/'
       path: '/rfq'
@@ -2306,6 +2367,13 @@ declare module '@tanstack/react-router' {
       path: '/settings/billing'
       fullPath: '/settings/billing'
       preLoaderRoute: typeof AuthenticatedSettingsBillingRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/schedules/$id': {
+      id: '/_authenticated/schedules/$id'
+      path: '/schedules/$id'
+      fullPath: '/schedules/$id'
+      preLoaderRoute: typeof AuthenticatedSchedulesIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/rfq/$rfqId': {
@@ -2406,6 +2474,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicVcardSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/schedule-calendar/$token': {
+      id: '/api/public/schedule-calendar/$token'
+      path: '/api/public/schedule-calendar/$token'
+      fullPath: '/api/public/schedule-calendar/$token'
+      preLoaderRoute: typeof ApiPublicScheduleCalendarTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/playlist-zip/$key': {
       id: '/api/public/playlist-zip/$key'
       path: '/api/public/playlist-zip/$key'
@@ -2453,6 +2528,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/hooks/sms-opt-out-webhook'
       fullPath: '/api/public/hooks/sms-opt-out-webhook'
       preLoaderRoute: typeof ApiPublicHooksSmsOptOutWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/schedule-reminders': {
+      id: '/api/public/hooks/schedule-reminders'
+      path: '/api/public/hooks/schedule-reminders'
+      fullPath: '/api/public/hooks/schedule-reminders'
+      preLoaderRoute: typeof ApiPublicHooksScheduleRemindersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/hooks/rsvp-reminders': {
@@ -2622,12 +2704,14 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedEcardsNewRoute: typeof AuthenticatedEcardsNewRoute
   AuthenticatedProjectsProjectIdRoute: typeof AuthenticatedProjectsProjectIdRoute
   AuthenticatedRfqRfqIdRoute: typeof AuthenticatedRfqRfqIdRoute
+  AuthenticatedSchedulesIdRoute: typeof AuthenticatedSchedulesIdRoute
   AuthenticatedSettingsBillingRoute: typeof AuthenticatedSettingsBillingRoute
   AuthenticatedToolsConverterRoute: typeof AuthenticatedToolsConverterRoute
   AuthenticatedContactsIndexRoute: typeof AuthenticatedContactsIndexRoute
   AuthenticatedEcardsIndexRoute: typeof AuthenticatedEcardsIndexRoute
   AuthenticatedProjectsIndexRoute: typeof AuthenticatedProjectsIndexRoute
   AuthenticatedRfqIndexRoute: typeof AuthenticatedRfqIndexRoute
+  AuthenticatedSchedulesIndexRoute: typeof AuthenticatedSchedulesIndexRoute
   AuthenticatedProjectsAcceptInviteTokenRoute: typeof AuthenticatedProjectsAcceptInviteTokenRoute
 }
 
@@ -2648,12 +2732,14 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedEcardsNewRoute: AuthenticatedEcardsNewRoute,
   AuthenticatedProjectsProjectIdRoute: AuthenticatedProjectsProjectIdRoute,
   AuthenticatedRfqRfqIdRoute: AuthenticatedRfqRfqIdRoute,
+  AuthenticatedSchedulesIdRoute: AuthenticatedSchedulesIdRoute,
   AuthenticatedSettingsBillingRoute: AuthenticatedSettingsBillingRoute,
   AuthenticatedToolsConverterRoute: AuthenticatedToolsConverterRoute,
   AuthenticatedContactsIndexRoute: AuthenticatedContactsIndexRoute,
   AuthenticatedEcardsIndexRoute: AuthenticatedEcardsIndexRoute,
   AuthenticatedProjectsIndexRoute: AuthenticatedProjectsIndexRoute,
   AuthenticatedRfqIndexRoute: AuthenticatedRfqIndexRoute,
+  AuthenticatedSchedulesIndexRoute: AuthenticatedSchedulesIndexRoute,
   AuthenticatedProjectsAcceptInviteTokenRoute:
     AuthenticatedProjectsAcceptInviteTokenRoute,
 }
@@ -2777,6 +2863,7 @@ const rootRouteChildren: RootRouteChildren = {
     ApiPublicHooksJoinRequestRemindersRoute,
   ApiPublicHooksPaymentRemindersRoute: ApiPublicHooksPaymentRemindersRoute,
   ApiPublicHooksRsvpRemindersRoute: ApiPublicHooksRsvpRemindersRoute,
+  ApiPublicHooksScheduleRemindersRoute: ApiPublicHooksScheduleRemindersRoute,
   ApiPublicHooksSmsOptOutWebhookRoute: ApiPublicHooksSmsOptOutWebhookRoute,
   ApiPublicHooksSmsOutboxDrainRoute: ApiPublicHooksSmsOutboxDrainRoute,
   ApiPublicHooksSmsStatusWebhookRoute: ApiPublicHooksSmsStatusWebhookRoute,
@@ -2785,6 +2872,7 @@ const rootRouteChildren: RootRouteChildren = {
     ApiPublicHooksVendorSearchCacheCleanupRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
   ApiPublicPlaylistZipKeyRoute: ApiPublicPlaylistZipKeyRoute,
+  ApiPublicScheduleCalendarTokenRoute: ApiPublicScheduleCalendarTokenRoute,
   ApiPublicVcardSlugRoute: ApiPublicVcardSlugRoute,
   ApiPublicVendorDiscoveryDetailsRoute: ApiPublicVendorDiscoveryDetailsRoute,
   ApiPublicVendorDiscoveryPhotoRoute: ApiPublicVendorDiscoveryPhotoRoute,

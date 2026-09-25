@@ -63,6 +63,7 @@ export function usePaymentDelivery(eventId: string): DeliveryRow[] {
 const LABEL: Record<string, string> = {
   pending: "queued",
   sent: "delivered to provider",
+  delivered: "delivered",
   failed: "failed",
   dlq: "failed",
   suppressed: "blocked (unsubscribed)",
@@ -71,7 +72,7 @@ const LABEL: Record<string, string> = {
 };
 
 function tone(status: string): string {
-  if (status === "sent") return "bg-emerald-100 text-emerald-800";
+  if (status === "sent" || status === "delivered") return "bg-emerald-100 text-emerald-800";
   if (status === "pending") return "bg-amber-100 text-amber-800";
   return "bg-red-100 text-red-700";
 }
