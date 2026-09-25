@@ -471,6 +471,7 @@ export async function loadProduct(
     : (prefixFilter("route", (VENTURE_ROUTE_PREFIXES as any)[venture]) ?? undefined);
 
   const withStatus = (status: string) => (q: any) => q.eq("status", status);
+  const withStatusIn = (statuses: string[]) => (q: any) => q.in("status", statuses);
   // Demo and showcase accounts never count toward the owner's numbers.
   const { getDemoUserIds } = await import("@/lib/demo-accounts.server");
   const demoIds = await getDemoUserIds().catch(() => [] as string[]);
