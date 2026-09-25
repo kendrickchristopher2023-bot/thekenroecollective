@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { expandOccurrences, nextOccurrences, buildScheduleIcs, describeRule, type ScheduleRule } from "@/lib/schedule-rrule";
+import { expandOccurrences, nextOccurrences, buildScheduleIcs, describeRule, monthDayWarning, type ScheduleRule } from "@/lib/schedule-rrule";
 
 const tz = "America/New_York";
 const base = (over: Partial<ScheduleRule> = {}): ScheduleRule => ({
@@ -66,5 +66,23 @@ describe("schedule recurrence", () => {
     expect(describeRule("FREQ=MONTHLY;BYDAY=1SU")).toBe("Every month on the 1st Sunday");
     expect(describeRule("FREQ=MONTHLY;BYDAY=-1FR")).toBe("Every month on the last Friday");
     expect(describeRule(null)).toBe("One time");
+  });
+
+  it("this and all future split leaves no gap or overlap", () => {
+    // Old series ends the day before the split date; new series starts on it at 8 PM.
+    const old = base({ ends_kind: "on_date", until_local: "2026-11-30T00:00" });
+    const next = base({ start_local: "2026-12-06T20:00" });
+    const win: [Date, Date] = [new Date("2026-10-01Z"), new Date("2027-02-01Z")];
+    const a = expandOccurrences(old, [], ...win).map((o) => o.start_local);
+    const b = expandOccurrences(next, [], ...win).map((o) => o.start_local);
+    expect(a).toEqual(["2026-10-04T19:00", "2026-11-01T19:00"]);
+    expect(b).toEqual(["2026-12-06T20:00", "2027-01-03T20:00"]);
+  });
+
+  it("31st warns and skips short months", () => {
+    expect(monthDayWarning(31)).toContain("Months without a 31st are skipped");
+    expect(monthDayWarning(15)).toBeNull();
+    const occ = expandOccurrences(base({ start_local: "2027-01-31T19:00", rrule: "FREQ=MONTHLY;BYMONTHDAY=31" }), [], new Date("2027-01-01Z"), new Date("2027-06-01Z"));
+    expect(occ.map((o) => o.start_local.slice(0, 10))).toEqual(["2027-01-31", "2027-03-31", "2027-05-31"]);
   });
 });

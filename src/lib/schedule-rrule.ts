@@ -322,3 +322,9 @@ export function googleCalendarUrl(opts: {
   if (rule) params.set("recur", `RRULE:${rule}`);
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
+
+/** Warning text when a monthly-by-date rule skips short months (29th to 31st). */
+export function monthDayWarning(monthDay: number): string | null {
+  if (monthDay < 29) return null;
+  return `Months without a ${ordinal(monthDay)} are skipped. Choose "Last day of the month" to never miss one.`;
+}
