@@ -281,7 +281,7 @@ const NewPerson = z.object({
   email: z.string().max(320).optional(),
 });
 
-async function upsertContact(sb: any, userId: string, p: { name?: string; phone?: string; email?: string }, existingId?: string | null) {
+async function upsertContact(sb: any, userId: string, p: { name?: string; phone?: string; email?: string; note?: string }, existingId?: string | null) {
   const { toE164, validEmail } = await import("@/lib/contact-import.server");
   const phone = p.phone ? toE164(p.phone) : "";
   const email = p.email && validEmail(p.email) ? p.email.trim().toLowerCase() : "";
@@ -295,6 +295,7 @@ async function upsertContact(sb: any, userId: string, p: { name?: string; phone?
     if (!ex.display_name && p.name) patch.display_name = p.name.trim();
     if (!ex.phone && phone) patch.phone = phone;
     if (!ex.email && email) patch.email = email;
+    if (!ex.notes && p.note?.trim()) patch.notes = p.note.trim().slice(0, 500);
     if (Object.keys(patch).length) await sb.from("contacts").update(patch).eq("id", existingId);
     return existingId;
   }
@@ -309,7 +310,7 @@ async function upsertContact(sb: any, userId: string, p: { name?: string; phone?
   }
   const { data: row, error } = await sb
     .from("contacts")
-    .insert({ owner_user_id: userId, display_name: p.name?.trim() || null, phone: phone || null, email: email || null, source: "schedules" })
+    .insert({ owner_user_id: userId, display_name: p.name?.trim() || null, phone: phone || null, email: email || null, notes: p.note?.trim().slice(0, 500) || null, source: "schedules" })
     .select("id")
     .single();
   if (error) throw new Error(error.message);
@@ -439,9 +440,16 @@ export const parseContactImport = createServerFn({ method: "POST" })
     let rows: Awaited<ReturnType<typeof imp.parseSheet>> = [];
     let importId: string | null = null;
 
+    const { supabaseAdmin: adminForLog } = await import("@/integrations/supabase/client.server");
     if (data.kind === "text") {
       if (!data.text?.trim()) throw new Error("Paste a list first.");
       rows = await imp.extractWithAi({ kind: "text", text: data.text });
+      const { data: rec } = await (adminForLog as any)
+        .from("contact_imports")
+        .insert({ owner_user_id: context.userId, kind: "text", status: "parsed", row_count: rows.length })
+        .select("id")
+        .single();
+      importId = rec?.id ?? null;
     } else {
       const path = data.storagePath ?? "";
       if (!path.startsWith(`${context.userId}/`)) throw new Error("That file is not yours.");
@@ -487,6 +495,7 @@ export const parseContactImport = createServerFn({ method: "POST" })
       const dup = (email && byEmail.get(email)) || (phone && byPhone.get(canonicalPhone(phone))) || null;
       return {
         name: r.name,
+        note: r.note ?? "",
         phone: phone || r.phone,
         email,
         phoneValid: !r.phone || !!phone,
@@ -495,6 +504,8 @@ export const parseContactImport = createServerFn({ method: "POST" })
         duplicate: dup ? { id: dup.id, name: dup.display_name, email: dup.email, phone: dup.phone } : null,
       };
     });
+    // Keep what the reader found so a confusing import can be traced later (30 days, owner only).
+    if (importId) await (adminForLog as any).from("contact_imports").update({ parsed_rows: reviewed }).eq("id", importId);
     return { importId, rows: reviewed };
   });
 
@@ -511,6 +522,7 @@ export const confirmContactImport = createServerFn({ method: "POST" })
           name: z.string().max(200),
           phone: z.string().max(40),
           email: z.string().max(320),
+          note: z.string().max(500).optional(),
           action: z.enum(["new", "merge", "skip"]),
           existingId: z.string().uuid().nullable().optional(),
         }),
@@ -528,9 +540,14 @@ export const confirmContactImport = createServerFn({ method: "POST" })
     const problems: string[] = [];
     const refused: { name: string; reason: string }[] = [];
     const cleared: { name: string; field: "email" | "phone" }[] = [];
+    const skipped: { name: string; reason: string }[] = [];
     const { toE164, validEmail } = await import("@/lib/contact-import.server");
     for (const r of data.rows) {
-      if (r.action === "skip") continue;
+      if (r.action === "skip") {
+        const nm = r.name.trim() || r.email.trim() || r.phone.trim() || "Unnamed row";
+        skipped.push({ name: nm, reason: !r.email.trim() && !r.phone.trim() ? "no phone or email" : "you chose Skip" });
+        continue;
+      }
       // The server is the real guard: an invalid value is never saved.
       const label = r.name.trim() || r.email.trim() || r.phone.trim() || "Unnamed row";
       const rawEmail = r.email.trim().toLowerCase();
@@ -544,7 +561,7 @@ export const confirmContactImport = createServerFn({ method: "POST" })
       if (rawEmail && !email) cleared.push({ name: label, field: "email" });
       if (rawPhone && !phone) cleared.push({ name: label, field: "phone" });
       try {
-        ids.push(await upsertContact(sb, context.userId, { name: r.name, phone, email }, r.action === "merge" ? r.existingId : null));
+        ids.push(await upsertContact(sb, context.userId, { name: r.name, phone, email, note: r.note }, r.action === "merge" ? r.existingId : null));
       } catch (e) {
         problems.push(`${label}: ${(e as Error).message}`);
       }
@@ -563,10 +580,19 @@ export const confirmContactImport = createServerFn({ method: "POST" })
       const { data: rec } = await (supabaseAdmin as any).from("contact_imports").select("storage_path,owner_user_id").eq("id", data.importId).maybeSingle();
       if (rec && rec.owner_user_id === context.userId) {
         if (rec.storage_path) await sb.storage.from("contact-imports").remove([rec.storage_path]);
-        await (supabaseAdmin as any).from("contact_imports").update({ status: "confirmed", storage_path: null }).eq("id", data.importId);
+        await (supabaseAdmin as any)
+          .from("contact_imports")
+          .update({
+            status: "confirmed",
+            storage_path: null,
+            schedule_id: data.scheduleId,
+            submitted_rows: data.rows,
+            result: { added: unique.length, channel: data.channel, skipped, refused, cleared, problems },
+          })
+          .eq("id", data.importId);
       }
     }
-    return { added: unique.length, problems, refused, cleared };
+    return { added: unique.length, problems, refused, cleared, skipped };
   });
 
 // ---------------- Send now ----------------

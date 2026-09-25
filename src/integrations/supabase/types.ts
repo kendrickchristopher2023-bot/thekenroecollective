@@ -933,9 +933,13 @@ export type Database = {
           id: string
           kind: string
           owner_user_id: string
+          parsed_rows: Json | null
+          result: Json | null
           row_count: number | null
+          schedule_id: string | null
           status: string
           storage_path: string | null
+          submitted_rows: Json | null
           updated_at: string
         }
         Insert: {
@@ -943,9 +947,13 @@ export type Database = {
           id?: string
           kind: string
           owner_user_id: string
+          parsed_rows?: Json | null
+          result?: Json | null
           row_count?: number | null
+          schedule_id?: string | null
           status?: string
           storage_path?: string | null
+          submitted_rows?: Json | null
           updated_at?: string
         }
         Update: {
@@ -953,9 +961,13 @@ export type Database = {
           id?: string
           kind?: string
           owner_user_id?: string
+          parsed_rows?: Json | null
+          result?: Json | null
           row_count?: number | null
+          schedule_id?: string | null
           status?: string
           storage_path?: string | null
+          submitted_rows?: Json | null
           updated_at?: string
         }
         Relationships: []
