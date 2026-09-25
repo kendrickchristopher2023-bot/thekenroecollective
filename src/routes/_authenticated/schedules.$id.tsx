@@ -478,7 +478,7 @@ function PeoplePanel({ scheduleId, people, onChange }: { scheduleId: string; peo
                     onChange={async (e) => {
                       const ch = e.target.value as any;
                       let ok = !!p.sms_consent_at || ch === "email";
-                      if (!ok) ok = await confirmDialog({ title: "Text reminders", message: "Did this person agree to get text reminders from you?", confirmLabel: "Yes, they agreed" } as any);
+                      if (!ok) ok = await confirmDialog({ title: "Text reminders", body: "Did this person agree to get text reminders from you?", confirmLabel: "Yes, they agreed" });
                       if (!ok) return;
                       try { await upd({ data: { personId: p.id, channel: ch, smsConsent: true } }); onChange(); } catch (err) { toast.error(toUserMessage(err)); }
                     }}>
@@ -658,7 +658,7 @@ function DangerZone({ scheduleId, status, isOwner, onChange }: { scheduleId: str
         }}>Test run (sends nothing)</button>
       ) : null}
       <button type="button" className="ml-auto rounded-full px-4 py-2 text-sm text-destructive hover:bg-destructive/10" onClick={async () => {
-        const ok = await confirmDialog({ title: "Delete this schedule?", message: "Its people, reminders and history are removed. Your contacts are kept.", confirmLabel: "Delete" } as any);
+        const ok = await confirmDialog({ title: "Delete this schedule?", body: "Its people, reminders and history are removed. Your contacts are kept.", confirmLabel: "Delete", tone: "danger" });
         if (!ok) return;
         try { await del({ data: { id: scheduleId } }); navigate({ to: "/schedules" }); } catch (e) { toast.error(toUserMessage(e)); }
       }}>Delete schedule</button>

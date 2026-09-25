@@ -96,6 +96,7 @@ import { Route as ApiPublicBrandPackRouteImport } from './routes/api/public/bran
 import { Route as ApiPublicBackupArchiveRouteImport } from './routes/api/public/backup-archive'
 import { Route as AuthenticatedToolsConverterRouteImport } from './routes/_authenticated/tools.converter'
 import { Route as AuthenticatedSettingsBillingRouteImport } from './routes/_authenticated/settings.billing'
+import { Route as AuthenticatedSchedulesIdRouteImport } from './routes/_authenticated/schedules.$id'
 import { Route as AuthenticatedRfqRfqIdRouteImport } from './routes/_authenticated/rfq.$rfqId'
 import { Route as AuthenticatedProjectsProjectIdRouteImport } from './routes/_authenticated/projects.$projectId'
 import { Route as AuthenticatedEcardsNewRouteImport } from './routes/_authenticated/ecards.new'
@@ -588,6 +589,12 @@ const AuthenticatedSettingsBillingRoute =
     path: '/settings/billing',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedSchedulesIdRoute =
+  AuthenticatedSchedulesIdRouteImport.update({
+    id: '/schedules/$id',
+    path: '/schedules/$id',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedRfqRfqIdRoute = AuthenticatedRfqRfqIdRouteImport.update({
   id: '/rfq/$rfqId',
   path: '/rfq/$rfqId',
@@ -920,6 +927,7 @@ export interface FileRoutesByFullPath {
   '/ecards/new': typeof AuthenticatedEcardsNewRoute
   '/projects/$projectId': typeof AuthenticatedProjectsProjectIdRoute
   '/rfq/$rfqId': typeof AuthenticatedRfqRfqIdRoute
+  '/schedules/$id': typeof AuthenticatedSchedulesIdRoute
   '/settings/billing': typeof AuthenticatedSettingsBillingRoute
   '/tools/converter': typeof AuthenticatedToolsConverterRoute
   '/api/public/backup-archive': typeof ApiPublicBackupArchiveRoute
@@ -1051,6 +1059,7 @@ export interface FileRoutesByTo {
   '/ecards/new': typeof AuthenticatedEcardsNewRoute
   '/projects/$projectId': typeof AuthenticatedProjectsProjectIdRoute
   '/rfq/$rfqId': typeof AuthenticatedRfqRfqIdRoute
+  '/schedules/$id': typeof AuthenticatedSchedulesIdRoute
   '/settings/billing': typeof AuthenticatedSettingsBillingRoute
   '/tools/converter': typeof AuthenticatedToolsConverterRoute
   '/api/public/backup-archive': typeof ApiPublicBackupArchiveRoute
@@ -1185,6 +1194,7 @@ export interface FileRoutesById {
   '/_authenticated/ecards/new': typeof AuthenticatedEcardsNewRoute
   '/_authenticated/projects/$projectId': typeof AuthenticatedProjectsProjectIdRoute
   '/_authenticated/rfq/$rfqId': typeof AuthenticatedRfqRfqIdRoute
+  '/_authenticated/schedules/$id': typeof AuthenticatedSchedulesIdRoute
   '/_authenticated/settings/billing': typeof AuthenticatedSettingsBillingRoute
   '/_authenticated/tools/converter': typeof AuthenticatedToolsConverterRoute
   '/api/public/backup-archive': typeof ApiPublicBackupArchiveRoute
@@ -1319,6 +1329,7 @@ export interface FileRouteTypes {
     | '/ecards/new'
     | '/projects/$projectId'
     | '/rfq/$rfqId'
+    | '/schedules/$id'
     | '/settings/billing'
     | '/tools/converter'
     | '/api/public/backup-archive'
@@ -1450,6 +1461,7 @@ export interface FileRouteTypes {
     | '/ecards/new'
     | '/projects/$projectId'
     | '/rfq/$rfqId'
+    | '/schedules/$id'
     | '/settings/billing'
     | '/tools/converter'
     | '/api/public/backup-archive'
@@ -1583,6 +1595,7 @@ export interface FileRouteTypes {
     | '/_authenticated/ecards/new'
     | '/_authenticated/projects/$projectId'
     | '/_authenticated/rfq/$rfqId'
+    | '/_authenticated/schedules/$id'
     | '/_authenticated/settings/billing'
     | '/_authenticated/tools/converter'
     | '/api/public/backup-archive'
@@ -2356,6 +2369,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsBillingRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/schedules/$id': {
+      id: '/_authenticated/schedules/$id'
+      path: '/schedules/$id'
+      fullPath: '/schedules/$id'
+      preLoaderRoute: typeof AuthenticatedSchedulesIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/rfq/$rfqId': {
       id: '/_authenticated/rfq/$rfqId'
       path: '/rfq/$rfqId'
@@ -2684,6 +2704,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedEcardsNewRoute: typeof AuthenticatedEcardsNewRoute
   AuthenticatedProjectsProjectIdRoute: typeof AuthenticatedProjectsProjectIdRoute
   AuthenticatedRfqRfqIdRoute: typeof AuthenticatedRfqRfqIdRoute
+  AuthenticatedSchedulesIdRoute: typeof AuthenticatedSchedulesIdRoute
   AuthenticatedSettingsBillingRoute: typeof AuthenticatedSettingsBillingRoute
   AuthenticatedToolsConverterRoute: typeof AuthenticatedToolsConverterRoute
   AuthenticatedContactsIndexRoute: typeof AuthenticatedContactsIndexRoute
@@ -2711,6 +2732,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedEcardsNewRoute: AuthenticatedEcardsNewRoute,
   AuthenticatedProjectsProjectIdRoute: AuthenticatedProjectsProjectIdRoute,
   AuthenticatedRfqRfqIdRoute: AuthenticatedRfqRfqIdRoute,
+  AuthenticatedSchedulesIdRoute: AuthenticatedSchedulesIdRoute,
   AuthenticatedSettingsBillingRoute: AuthenticatedSettingsBillingRoute,
   AuthenticatedToolsConverterRoute: AuthenticatedToolsConverterRoute,
   AuthenticatedContactsIndexRoute: AuthenticatedContactsIndexRoute,
