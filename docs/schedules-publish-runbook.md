@@ -3,6 +3,7 @@
 ## 1. What's New entry (draft, not yet visible)
 Title: Schedules: set it once, and everyone gets reminded
 Body: Have a call on the first Sunday of every month? Set it up once in Schedules, add your people, and we send email and text reminders before every date, for as long as you like. Import names from a spreadsheet, a PDF, or even a photo of a handwritten list, and check every row before it is saved. Skip or move a single date without changing the rest. Everyone gets an "Add to calendar" link, and anyone can reply STOP to stop texts. Included with Host and Atelier plans.
+New: Send now. Need to reach everyone today? Tap Send now on any schedule, pick the date, check the message, and see exactly who gets a text or email before you send.
 CTA: Open Schedules -> /schedules
 
 ## 2. Cron jobs (create only after publish)
