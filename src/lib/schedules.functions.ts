@@ -426,6 +426,10 @@ export const parseContactImport = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const sb = context.supabase as any;
     await assertCanUse(sb);
+    // Demo/showcase accounts and the demo hostname never reach the paid AI parse.
+    const { isDemoCaller, assertNotDemo } = await import("@/lib/demo-mode.server");
+    if (await isDemoCaller(context as any)) throw new Error("Importing from a file is turned off in the demo.");
+    await assertNotDemo("contact import");
     const imp = await import("@/lib/contact-import.server");
     let rows: Awaited<ReturnType<typeof imp.parseSheet>> = [];
     let importId: string | null = null;
@@ -585,4 +589,18 @@ export const getPersonPage = createServerFn({ method: "GET" })
       nextAt: next?.[0]?.starts_at ?? null,
       schedule: { start_local: s.start_local, timezone: s.timezone, duration_minutes: s.duration_minutes, rrule: s.rrule, ends_kind: s.ends_kind, until_local: s.until_local, occurrence_count: s.occurrence_count },
     };
+  });
+
+/** Cancel an import: delete the uploaded file now and mark the import discarded. */
+export const discardContactImport = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ importId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const sb = context.supabase as any;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: rec } = await (supabaseAdmin as any).from("contact_imports").select("storage_path,owner_user_id").eq("id", data.importId).maybeSingle();
+    if (!rec || rec.owner_user_id !== context.userId) throw new Error("Import not found.");
+    if (rec.storage_path) await sb.storage.from("contact-imports").remove([rec.storage_path]);
+    await (supabaseAdmin as any).from("contact_imports").update({ status: "discarded", storage_path: null }).eq("id", data.importId);
+    return { ok: true };
   });
