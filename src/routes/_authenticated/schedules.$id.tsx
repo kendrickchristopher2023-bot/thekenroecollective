@@ -20,7 +20,7 @@ import {
   deleteSchedule,
   runScheduleEngine,
 } from "@/lib/schedules.functions";
-import { buildRrule, describeRule, parseRepeat, WEEKDAYS, ordinal, type RepeatInput, type Weekday } from "@/lib/schedule-rrule";
+import { buildRrule, describeRule, monthDayWarning, parseRepeat, WEEKDAYS, ordinal, type RepeatInput, type Weekday } from "@/lib/schedule-rrule";
 import { whenLabel, offsetLabel, DEFAULT_STEPS, MERGE_FIELDS, type StepDraft } from "@/lib/schedule-messages";
 import { toUserMessage } from "@/lib/user-error";
 import { confirmDialog } from "@/lib/confirm-dialog";
@@ -214,7 +214,6 @@ function DetailsForm({ initial, disabled, onSaved }: { initial: any | null; disa
     }
   }
 
-  const monthDayWarning = (rep.kind === "monthly_date" || rep.kind === "quarterly") && rep.monthDay > 28;
 
   return (
     <form className="space-y-6" onSubmit={(e) => { e.preventDefault(); void submit("all"); }}>
@@ -317,7 +316,7 @@ function DetailsForm({ initial, disabled, onSaved }: { initial: any | null; disa
           </div>
         ) : null}
         {rep.position === 5 && rep.kind === "monthly_position" ? <p className="mt-2 text-xs text-amber-800">Some months have no 5th {DAY_LABEL[rep.positionDay]}. Those months are skipped.</p> : null}
-        {monthDayWarning ? <p className="mt-2 text-xs text-amber-800">Months without a {ordinal(rep.monthDay)} are skipped. Choose "Last day of the month" to never miss one.</p> : null}
+        {monthDayWarning(rep.monthDay) && (rep.kind === "monthly_date" || rep.kind === "quarterly") ? <p className="mt-2 text-xs text-amber-800">{monthDayWarning(rep.monthDay)}</p> : null}
         <p className="mt-3 text-sm font-medium">{describeRule(rule)}</p>
 
         {rep.kind !== "none" ? (
