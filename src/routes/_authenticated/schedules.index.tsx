@@ -52,7 +52,7 @@ function SchedulesPage() {
         <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Schedules</p>
-            <h1 className="mt-2 font-display text-3xl sm:text-4xl">Repeating calls, remembered for you</h1>
+            <h1 className="mt-2 font-serif text-3xl sm:text-4xl">Repeating calls, remembered for you</h1>
             <p className="mt-2 max-w-xl text-sm text-muted-foreground">
               Set it up once. Everyone gets an email and a text before each call, with the join link and a calendar invite.
             </p>
@@ -68,7 +68,7 @@ function SchedulesPage() {
 
         {canUse === false ? (
           <div className="mt-8 rounded-3xl bg-card p-8 ring-1 ring-ink/5">
-            <h2 className="font-display text-xl">Schedules is included with Host and Atelier plans</h2>
+            <h2 className="font-serif text-xl">Schedules is included with Host and Atelier plans</h2>
             <p className="mt-2 text-sm text-muted-foreground">
               {rows?.length
                 ? "Your schedules are still here and you can edit them. Reminders are paused until your plan includes Schedules again."
@@ -83,7 +83,7 @@ function SchedulesPage() {
         {rows && rows.length === 0 && canUse ? (
           <div className="mt-8 rounded-3xl bg-card p-10 text-center ring-1 ring-ink/5">
             <CalendarClock className="mx-auto h-8 w-8 text-velvet" />
-            <h2 className="mt-3 font-display text-xl">No schedules yet</h2>
+            <h2 className="mt-3 font-serif text-xl">No schedules yet</h2>
             <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
               For example: the family call on the 1st Sunday of every month at 7:00 PM.
             </p>
@@ -96,7 +96,7 @@ function SchedulesPage() {
               <li key={r.id}>
                 <Link to="/schedules/$id" params={{ id: r.id }} className="block h-full rounded-3xl bg-card p-6 ring-1 ring-ink/5 transition hover:ring-velvet/30">
                   <div className="flex items-start justify-between gap-3">
-                    <h2 className="font-display text-lg leading-snug">{r.title}</h2>
+                    <h2 className="font-serif text-lg leading-snug">{r.title}</h2>
                     <StatusPill status={r.status} paused={canUse === false} />
                   </div>
                   <p className="mt-1 text-sm text-muted-foreground">{describeRule(r.rrule)}</p>
