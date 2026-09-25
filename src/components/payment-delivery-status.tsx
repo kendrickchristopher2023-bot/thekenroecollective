@@ -63,6 +63,7 @@ export function usePaymentDelivery(eventId: string): DeliveryRow[] {
 const LABEL: Record<string, string> = {
   pending: "queued",
   sent: "delivered to provider",
+  delivered: "delivered",
   failed: "failed",
   dlq: "failed",
   suppressed: "blocked (unsubscribed)",
