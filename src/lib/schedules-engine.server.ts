@@ -214,7 +214,8 @@ export async function runTick(
 
         const info = await ownerInfo(s.owner_user_id);
         const c = person.contact ?? {};
-        if (s.is_demo || info.demo) { await mark("blocked", "demo"); continue; }
+        // Demo/showcase: never reaches a sender. Recorded as a dry run only.
+        if (s.is_demo || info.demo) { await mark("dry_run", "demo"); continue; }
         if (!info.entitled) { await mark("paused", "plan_downgraded"); continue; }
         if (person.paused) { await mark("paused", "person_paused"); continue; }
 

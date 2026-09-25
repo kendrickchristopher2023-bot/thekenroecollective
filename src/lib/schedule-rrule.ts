@@ -6,7 +6,11 @@
 // which uses the offset in force on that date in the schedule's own zone. That
 // is what keeps a 7:00 PM call at 7:00 PM across daylight saving changes.
 
-import { RRule, rrulestr } from "rrule";
+import * as rruleNs from "rrule";
+// rrule ships CommonJS for SSR and ESM for the browser; support both shapes.
+const rruleMod: any = (rruleNs as any).rrulestr ? rruleNs : (rruleNs as any).default;
+const rrulestr: typeof import("rrule").rrulestr = rruleMod.rrulestr;
+type RRule = import("rrule").RRule;
 import { eventInstant } from "@/lib/datetime";
 
 export type EndsKind = "never" | "on_date" | "count";

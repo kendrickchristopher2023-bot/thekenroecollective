@@ -269,8 +269,8 @@ function DetailsForm({ initial, disabled, onSaved }: { initial: any | null; disa
               <option value="none">Does not repeat</option>
               <option value="daily">Daily</option>
               <option value="weekly">Weekly</option>
-              <option value="monthly_position">Monthly, by weekday (1st Sunday)</option>
-              <option value="monthly_date">Monthly, by date (the 15th)</option>
+              <option value="monthly_position">Monthly on a weekday</option>
+              <option value="monthly_date">Monthly on a date</option>
               <option value="quarterly">Every 3 months</option>
               <option value="yearly">Yearly</option>
             </select>

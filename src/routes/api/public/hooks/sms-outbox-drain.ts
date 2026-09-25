@@ -95,8 +95,6 @@ export const Route = createFileRoute("/api/public/hooks/sms-outbox-drain")({
         const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
         const auth = "Basic " + Buffer.from(`${accountSid}:${authToken}`).toString("base64");
 
-        // Absolute status callback URL — derived from the incoming request so
-        // it points at whichever host Twilio can reach (preview vs production).
         // Fixed, public https address. Built from the incoming request before,
         // which gave Twilio an address that did not match what the webhook
         // later checked the signature against, so every callback was refused.
