@@ -82,6 +82,7 @@ import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } fr
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as WallEventIdIndexRouteImport } from './routes/wall.$eventId.index'
 import { Route as EventsEventIdIndexRouteImport } from './routes/events.$eventId.index'
+import { Route as AuthenticatedSchedulesIndexRouteImport } from './routes/_authenticated/schedules.index'
 import { Route as AuthenticatedRfqIndexRouteImport } from './routes/_authenticated/rfq.index'
 import { Route as AuthenticatedProjectsIndexRouteImport } from './routes/_authenticated/projects.index'
 import { Route as AuthenticatedEcardsIndexRouteImport } from './routes/_authenticated/ecards.index'
@@ -511,6 +512,12 @@ const EventsEventIdIndexRoute = EventsEventIdIndexRouteImport.update({
   path: '/events/$eventId/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedSchedulesIndexRoute =
+  AuthenticatedSchedulesIndexRouteImport.update({
+    id: '/schedules/',
+    path: '/schedules/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedRfqIndexRoute = AuthenticatedRfqIndexRouteImport.update({
   id: '/rfq/',
   path: '/rfq/',
@@ -926,6 +933,7 @@ export interface FileRoutesByFullPath {
   '/ecards/': typeof AuthenticatedEcardsIndexRoute
   '/projects/': typeof AuthenticatedProjectsIndexRoute
   '/rfq/': typeof AuthenticatedRfqIndexRoute
+  '/schedules/': typeof AuthenticatedSchedulesIndexRoute
   '/events/$eventId/': typeof EventsEventIdIndexRoute
   '/wall/$eventId/': typeof WallEventIdIndexRoute
   '/projects/accept-invite/$token': typeof AuthenticatedProjectsAcceptInviteTokenRoute
@@ -1056,6 +1064,7 @@ export interface FileRoutesByTo {
   '/ecards': typeof AuthenticatedEcardsIndexRoute
   '/projects': typeof AuthenticatedProjectsIndexRoute
   '/rfq': typeof AuthenticatedRfqIndexRoute
+  '/schedules': typeof AuthenticatedSchedulesIndexRoute
   '/events/$eventId': typeof EventsEventIdIndexRoute
   '/wall/$eventId': typeof WallEventIdIndexRoute
   '/projects/accept-invite/$token': typeof AuthenticatedProjectsAcceptInviteTokenRoute
@@ -1189,6 +1198,7 @@ export interface FileRoutesById {
   '/_authenticated/ecards/': typeof AuthenticatedEcardsIndexRoute
   '/_authenticated/projects/': typeof AuthenticatedProjectsIndexRoute
   '/_authenticated/rfq/': typeof AuthenticatedRfqIndexRoute
+  '/_authenticated/schedules/': typeof AuthenticatedSchedulesIndexRoute
   '/events/$eventId/': typeof EventsEventIdIndexRoute
   '/wall/$eventId/': typeof WallEventIdIndexRoute
   '/_authenticated/projects/accept-invite/$token': typeof AuthenticatedProjectsAcceptInviteTokenRoute
@@ -1322,6 +1332,7 @@ export interface FileRouteTypes {
     | '/ecards/'
     | '/projects/'
     | '/rfq/'
+    | '/schedules/'
     | '/events/$eventId/'
     | '/wall/$eventId/'
     | '/projects/accept-invite/$token'
@@ -1452,6 +1463,7 @@ export interface FileRouteTypes {
     | '/ecards'
     | '/projects'
     | '/rfq'
+    | '/schedules'
     | '/events/$eventId'
     | '/wall/$eventId'
     | '/projects/accept-invite/$token'
@@ -1584,6 +1596,7 @@ export interface FileRouteTypes {
     | '/_authenticated/ecards/'
     | '/_authenticated/projects/'
     | '/_authenticated/rfq/'
+    | '/_authenticated/schedules/'
     | '/events/$eventId/'
     | '/wall/$eventId/'
     | '/_authenticated/projects/accept-invite/$token'
@@ -2245,6 +2258,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EventsEventIdIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/schedules/': {
+      id: '/_authenticated/schedules/'
+      path: '/schedules'
+      fullPath: '/schedules/'
+      preLoaderRoute: typeof AuthenticatedSchedulesIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/rfq/': {
       id: '/_authenticated/rfq/'
       path: '/rfq'
@@ -2670,6 +2690,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedEcardsIndexRoute: typeof AuthenticatedEcardsIndexRoute
   AuthenticatedProjectsIndexRoute: typeof AuthenticatedProjectsIndexRoute
   AuthenticatedRfqIndexRoute: typeof AuthenticatedRfqIndexRoute
+  AuthenticatedSchedulesIndexRoute: typeof AuthenticatedSchedulesIndexRoute
   AuthenticatedProjectsAcceptInviteTokenRoute: typeof AuthenticatedProjectsAcceptInviteTokenRoute
 }
 
@@ -2696,6 +2717,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedEcardsIndexRoute: AuthenticatedEcardsIndexRoute,
   AuthenticatedProjectsIndexRoute: AuthenticatedProjectsIndexRoute,
   AuthenticatedRfqIndexRoute: AuthenticatedRfqIndexRoute,
+  AuthenticatedSchedulesIndexRoute: AuthenticatedSchedulesIndexRoute,
   AuthenticatedProjectsAcceptInviteTokenRoute:
     AuthenticatedProjectsAcceptInviteTokenRoute,
 }
