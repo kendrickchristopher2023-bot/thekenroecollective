@@ -71,7 +71,7 @@ export function SchedulePersonView({ page, token }: { page: PersonPageData; toke
           {page.nextLabel ? <p className="mt-2 text-lg">{page.nextLabel}</p> : <p className="mt-2 text-muted-foreground">No upcoming date yet.</p>}
         </section>
 
-        {page.joinUrl || page.dialIn || page.location || page.description ? (
+        {page.joinUrl || page.meetingId || page.meetingPasscode || page.dialIn || page.location || page.description ? (
           <section className="rounded-3xl bg-card p-5 ring-1 ring-ink/5" aria-labelledby="join-details">
             <h2 id="join-details" className="font-serif text-xl">How to join</h2>
             {page.joinUrl ? <a href={page.joinUrl} target="_blank" rel="noreferrer" className="mt-3 inline-block rounded-full bg-velvet px-5 py-2.5 text-sm font-medium text-primary-foreground">Join the call</a> : null}

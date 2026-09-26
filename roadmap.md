@@ -2,7 +2,7 @@
 
 ## Current Schedules meeting-credentials update
 - [x] Add dedicated Meeting ID and Passcode storage and migrate the approved reunion values only.
-- [ ] Enforce credentials across texts, emails, personal pages, calendars, and previews.
+- [x] Enforce credentials across texts, emails, personal pages, calendars, and previews.
 - [ ] Verify protected truncation, dry-run rendering, unchanged outbox, compatibility, and desktop/phone presentation.
 
 ## Urgent before Sunday family demo (12 Sep)
