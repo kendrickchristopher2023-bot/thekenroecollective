@@ -820,6 +820,7 @@ const SendNowTarget = z.object({
   occurrenceId: z.string().uuid().nullable(),
   channel: z.enum(["email", "sms", "both"]),
   personIds: z.array(z.string().uuid()).max(500).nullable(),
+  includeDeclined: z.boolean().optional().default(false),
 });
 
 export const previewSendNow = createServerFn({ method: "POST" })
