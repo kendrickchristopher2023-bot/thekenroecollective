@@ -8,7 +8,7 @@ const { DEFAULT_STEPS } = await import("@/lib/schedule-messages");
 const { count: sc } = await admin.from("schedule_reminder_steps").select("id", { count: "exact", head: true }).eq("schedule_id", c.S1);
 if (!sc) await admin.from("schedule_reminder_steps").insert(DEFAULT_STEPS.map((x: any) => ({ ...x, schedule_id: c.S1 })));
 await admin.from("schedule_people").update({ removed_at: new Date().toISOString() }).eq("schedule_id", c.S1).eq("contact_id", c.cids[5]);
-await materializeSchedule(admin as any, c.S1);
+await materializeSchedule(admin as any, c.S1, new Date("2027-09-01T12:00:00Z"));
 const r = await runTick(admin as any, { now: new Date("2027-09-05T22:00:30Z"), dryRun: true, ownerUserId: c.A.id });
 console.log("tick", JSON.stringify(r));
 const { data: ppl } = await admin.from("schedule_people").select("id,paused,removed_at,rsvp_token,contact:contacts(display_name)").eq("schedule_id", c.S1);
