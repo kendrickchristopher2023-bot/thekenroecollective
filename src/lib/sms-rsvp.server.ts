@@ -35,24 +35,22 @@ export interface SmsRsvpResult {
   reply?: string;
 }
 
-export async function recordSmsRsvp(
-  admin: SupabaseClient,
-  fromPhone: string,
-  answer: QuickRsvpAnswer,
-): Promise<SmsRsvpResult> {
+export interface EventCandidate { eventId: string; guestId: string; title: string; when: string; sort: number }
+
+/** The soonest upcoming event where this number is a guest, or null. Reads only. */
+export async function findEventCandidate(admin: SupabaseClient, fromPhone: string): Promise<EventCandidate | null> {
   const key = phoneKey(fromPhone);
-  if (key.length < 10) return { matched: false };
+  if (key.length < 10) return null;
 
   const { data: rows } = await admin
     .from("events")
     .select("id, data")
     .is("archived_at", null)
     .limit(500);
-  if (!rows?.length) return { matched: false };
+  if (!rows?.length) return null;
 
   const cutoff = Date.now() - 24 * 60 * 60 * 1000;
-  type Candidate = { eventId: string; guestId: string; title: string; when: string; sort: number };
-  const candidates: Candidate[] = [];
+  const candidates: EventCandidate[] = [];
 
   for (const row of rows as { id: string; data: Record<string, unknown> | null }[]) {
     const data = row.data ?? {};
@@ -73,10 +71,20 @@ export async function recordSmsRsvp(
     });
   }
 
-  if (!candidates.length) return { matched: false };
-  // Soonest upcoming event wins — that is the one they were just texted about.
+  if (!candidates.length) return null;
+  // Soonest upcoming event wins, that is the one they were just texted about.
   candidates.sort((a, b) => a.sort - b.sort);
-  const pick = candidates[0]!;
+  return candidates[0]!;
+}
+
+export async function recordSmsRsvp(
+  admin: SupabaseClient,
+  fromPhone: string,
+  answer: QuickRsvpAnswer,
+  known?: EventCandidate | null,
+): Promise<SmsRsvpResult> {
+  const pick = known ?? (await findEventCandidate(admin, fromPhone));
+  if (!pick) return { matched: false };
 
   const { data: result, error } = await admin.rpc("public_update_guest", {
     _event_id: pick.eventId,
