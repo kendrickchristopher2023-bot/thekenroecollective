@@ -30,6 +30,9 @@ export const DEFAULT_STEPS: StepDraft[] = [
   { offset_minutes: 0, channel: "sms", is_starting_now: true, subject: null, body: "{title} is starting now. Join: {join}", position: 3 },
 ];
 
+/** Complete default for a one-off Send now text. Calendar is intentionally omitted to prioritize RSVP and meeting details. */
+export const DEFAULT_MANUAL_SMS = "Hi {first_name},\n\n{title} is {when}.\n\n{description}\n\nJoin meeting: {join}\n\nRSVP: {rsvp}";
+
 /** Offered on the Reminders tab: a text 2 days before, only to people who have not answered. */
 export const NUDGE_STEP: StepDraft = {
   offset_minutes: -2 * 24 * 60,

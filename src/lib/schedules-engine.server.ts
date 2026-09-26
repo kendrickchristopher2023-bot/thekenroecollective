@@ -21,6 +21,8 @@ import {
   hostFromSchedule,
   hostSmsLine,
   prettyPhone,
+  normalizeJoinUrl,
+  DEFAULT_MANUAL_SMS,
 } from "@/lib/schedule-messages";
 import { phoneKeys, canonicalPhone } from "@/lib/phone-keys";
 import { eventInstant, eventTimeZone } from "@/lib/datetime";
@@ -37,6 +39,14 @@ export function calendarLink(token: string): string {
 }
 export function personPageLink(token: string): string {
   return `${SCHEDULE_SITE_ORIGIN}/sc/${token}`;
+}
+
+/** Make legacy host-entered links tappable without letting one bad saved value break a send. */
+export function safeJoinValue(s: any): string {
+  if (s.join_url) {
+    try { return normalizeJoinUrl(s.join_url) || ""; } catch { return ""; }
+  }
+  return [s.dial_in, s.dial_pin ? `PIN ${s.dial_pin}` : ""].filter(Boolean).join(" ") || s.location || "";
 }
 
 /** Rebuild occurrences from now - 1 day to now + 90 days. */
@@ -193,7 +203,7 @@ export function mergeValues(s: any, person: any, startsAt: Date, host: string) {
     first_name: firstName(person.contact?.display_name),
     title: s.title,
     when: whenLabel(startsAt, s.timezone),
-    join: s.join_url || [s.dial_in, s.dial_pin ? `PIN ${s.dial_pin}` : ""].filter(Boolean).join(" ") || s.location,
+    join: safeJoinValue(s),
     description: s.description,
     calendar: calendarLink(person.rsvp_token),
     rsvp: personPageLink(person.rsvp_token),
@@ -591,7 +601,7 @@ export function prefill(tpl: string, s: any, startsAt: Date, host: string): stri
   const map: Record<string, string> = {
     title: s.title || "Our call",
     when: whenLabel(startsAt, s.timezone),
-    join: s.join_url || [s.dial_in, s.dial_pin ? `PIN ${s.dial_pin}` : ""].filter(Boolean).join(" ") || s.location || "see the invitation",
+    join: safeJoinValue(s) || "see the invitation",
     description: s.description || "",
     host,
     host_name: s.host_name || host,
@@ -665,7 +675,6 @@ export async function manualSendPreview(admin: Admin, userClient: any, userId: s
   if (!occ) return { dates, occurrenceId: null, rows: [], templates: null, quiet: false, morningAt: null, morningOk: false, demo: s.is_demo || info.demo, entitled: info.entitled, capLeft: null, timezone: s.timezone, samplePerson: null };
   const startsAt = new Date(occ.starts_at);
   const emailStep = nearestStep(steps, "email", startsAt, now);
-  const smsStep = nearestStep(steps, "sms", startsAt, now);
   const chosen = input.personIds ? people.filter((p) => input.personIds!.includes(p.id)) : people;
   const optedOut = await loadOptOuts(admin, chosen.map((p) => p.contact?.phone));
   const recent = await recentManual(admin, occ.id, now);
@@ -700,7 +709,7 @@ export async function manualSendPreview(admin: Admin, userClient: any, userId: s
     templates: {
       subject: prefill(emailStep.subject || "Reminder: {title}", s, startsAt, info.host),
       emailBody: prefill(emailStep.body, s, startsAt, info.host),
-      smsBody: prefill(smsStep.body, s, startsAt, info.host),
+      smsBody: prefill(DEFAULT_MANUAL_SMS, s, startsAt, info.host),
     },
     quiet,
     morningAt: morning ? morning.toISOString() : null,
