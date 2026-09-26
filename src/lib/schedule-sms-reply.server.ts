@@ -88,20 +88,25 @@ async function latestEventText(admin: Admin, from: string, eventId: string, now:
   return r ? new Date(r.sent_at ?? r.created_at).getTime() : null;
 }
 
+/** Pure precedence rule. hits sorted newest first. Exported for unit tests. */
+export function decideRoute<H extends { scheduleId: string; at: number }>(hits: H[], hasEvent: boolean, eventAt: number | null) {
+  if (!hits.length) return { route: "event" as const, hits };
+  const top = hits[0]!;
+  const other = hits.find((h) => h.scheduleId !== top.scheduleId);
+  if (other && top.at - other.at < AMBIGUOUS_MS) return { route: "ambiguous" as const, hits: [top, other] };
+  if (hasEvent && eventAt !== null) {
+    if (Math.abs(eventAt - top.at) < AMBIGUOUS_MS) return { route: "ambiguous" as const, hits: [top] };
+    if (eventAt > top.at) return { route: "event" as const, hits };
+  }
+  return { route: "schedule" as const, hits: [top] };
+}
+
 /** Decide where a reply goes, without writing anything. */
 export async function routeReply(admin: Admin, from: string, now = new Date()) {
   const hits = await scheduleHits(admin, from, now);
   const event = await findEventCandidate(admin, from);
   const eventAt = event ? await latestEventText(admin, from, event.eventId, now) : null;
-  if (!hits.length) return { route: "event" as const, event, hits, eventAt };
-  const top = hits[0]!;
-  const other = hits.find((h) => h.scheduleId !== top.scheduleId);
-  if (other && top.at - other.at < AMBIGUOUS_MS) return { route: "ambiguous" as const, event, hits: [top, other], eventAt };
-  if (event && eventAt !== null) {
-    if (Math.abs(eventAt - top.at) < AMBIGUOUS_MS) return { route: "ambiguous" as const, event, hits: [top], eventAt };
-    if (eventAt > top.at) return { route: "event" as const, event, hits, eventAt };
-  }
-  return { route: "schedule" as const, event, hits: [top], eventAt };
+  return { ...decideRoute(hits, !!event, eventAt), event, eventAt };
 }
 
 const WORD: Record<Answer, string> = { yes: "you will attend", maybe: "you may attend", no: "you cannot make" };
