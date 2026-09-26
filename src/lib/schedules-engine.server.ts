@@ -573,8 +573,12 @@ export function prefill(tpl: string, s: any, startsAt: Date, host: string): stri
     when: whenLabel(startsAt, s.timezone),
     join: s.join_url || [s.dial_in, s.dial_pin ? `PIN ${s.dial_pin}` : ""].filter(Boolean).join(" ") || s.location || "see the invitation",
     host,
+    host_name: s.host_name || host,
+    host_phone: s.host_phone ? prettyPhone(s.host_phone) : "",
+    host_email: s.host_email || "",
+    host_note: s.host_note || "",
   };
-  return tpl.replace(/\{(title|when|join|host)\}/g, (_m, k: string) => map[k] ?? _m);
+  return tpl.replace(/\{(title|when|join|host_name|host_phone|host_email|host_note|host)\}/g, (_m, k: string) => map[k] ?? _m);
 }
 
 /** The step for this date whose send time is closest to now, per channel. */
@@ -629,7 +633,7 @@ async function recentManual(admin: Admin, occurrenceId: string, now: Date) {
 }
 
 export async function manualSendPreview(admin: Admin, userClient: any, userId: string, input: {
-  scheduleId: string; occurrenceId: string | null; channel: "email" | "sms" | "both"; personIds: string[] | null;
+  scheduleId: string; occurrenceId: string | null; channel: "email" | "sms" | "both"; personIds: string[] | null; includeDeclined?: boolean;
 }, now = new Date()) {
   const { s, occs, occ, steps, people } = await loadForManual(admin, userClient, userId, input.scheduleId, input.occurrenceId, now);
   const owners = makeOwnerCache(admin, now);
@@ -642,12 +646,14 @@ export async function manualSendPreview(admin: Admin, userClient: any, userId: s
   const chosen = input.personIds ? people.filter((p) => input.personIds!.includes(p.id)) : people;
   const optedOut = await loadOptOuts(admin, chosen.map((p) => p.contact?.phone));
   const recent = await recentManual(admin, occ.id, now);
+  const declined = await loadDeclined(admin, [occ.id]);
   let used = owners.smsToday.get(s.owner_user_id) ?? 0;
   const rows: ManualPlanRow[] = chosen.map((p) => {
     const name = p.contact?.display_name || p.contact?.email || p.contact?.phone || "Someone";
     const one = (ch: "email" | "sms") => {
       if (input.channel !== "both" && input.channel !== ch) return null;
       if (p.channel !== "both" && p.channel !== ch) return { go: false, reason: ch === "sms" ? "prefers_email" : "prefers_text" };
+      if (!input.includeDeclined && declined.has(`${occ.id}:${p.id}`)) return { go: false, reason: "cannot_attend" };
       const prior = recent.get(`${p.id}:${ch}`);
       if (prior) return { go: false, reason: "already_sent", minutesAgo: Math.max(0, Math.floor((now.getTime() - prior.getTime()) / 60_000)) };
       let g = guardFor({ schedule: s, person: p, channel: ch, info, optedOut, smsUsed: used });
@@ -681,7 +687,9 @@ export async function manualSendPreview(admin: Admin, userClient: any, userId: s
     entitled: info.entitled,
     capLeft: info.isOwner ? null : Math.max(0, DAILY_SMS_CAP - (owners.smsToday.get(s.owner_user_id) ?? 0)),
     timezone: s.timezone,
-    samplePerson: first ? { firstName: firstName(first.contact?.display_name), needsIntro: !first.first_sms_sent_at, host: info.host, calendar: calendarLink(first.rsvp_token) } : null,
+    samplePerson: first ? { firstName: firstName(first.contact?.display_name), needsIntro: !first.first_sms_sent_at, host: info.host, calendar: calendarLink(first.rsvp_token), rsvp: personPageLink(first.rsvp_token) } : null,
+    hostLine: hostSmsLine(hostFromSchedule(s)),
+    declinedCount: declined.size,
   };
 }
 
@@ -697,7 +705,7 @@ export interface ManualResultRow {
 
 export async function manualSend(admin: Admin, userClient: any, userId: string, input: {
   scheduleId: string; occurrenceId: string; channel: "email" | "sms" | "both"; personIds: string[] | null;
-  requestId: string; subject: string; emailBody: string; smsBody: string; textsAtMorning: boolean; forceDryRun: boolean;
+  requestId: string; subject: string; emailBody: string; smsBody: string; textsAtMorning: boolean; forceDryRun: boolean; includeDeclined?: boolean;
 }, now = new Date()) {
   const { s, occ, people } = await loadForManual(admin, userClient, userId, input.scheduleId, input.occurrenceId, now);
   if (!occ) throw new Error("That date is no longer on the schedule.");
@@ -709,12 +717,17 @@ export async function manualSend(admin: Admin, userClient: any, userId: string, 
   const morning = quiet ? nextMorning(now, s.timezone) : null;
   const dryRun = input.forceDryRun;
   const out: ManualResultRow[] = [];
+  const declined = await loadDeclined(admin, [occ.id]);
 
   for (const p of chosen) {
     const name = p.contact?.display_name || p.contact?.email || p.contact?.phone || "Someone";
     for (const ch of ["email", "sms"] as const) {
       if (input.channel !== "both" && input.channel !== ch) continue;
       if (p.channel !== "both" && p.channel !== ch) continue;
+      if (!input.includeDeclined && declined.has(`${occ.id}:${p.id}`)) {
+        out.push({ personId: p.id, name, channel: ch, status: "not_sent", reason: "cannot_attend" });
+        continue;
+      }
       // Quiet hours apply to everyone, owners included.
       let status = "pending";
       let due = now;
