@@ -403,6 +403,198 @@ export const updatePerson = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+async function mirrorConsent(phones: string[]) {
+  if (!phones.length) return;
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  for (const phone of phones) {
+    const { data: ex } = await (supabaseAdmin as any).from("sms_consent_log").select("id").eq("phone_number", phone).maybeSingle();
+    if (!ex) await (supabaseAdmin as any).from("sms_consent_log").insert({ phone_number: phone, opted_out: false });
+  }
+}
+
+/** Finds another of this owner's contacts that already holds the phone or email. */
+async function findOtherContact(sb: any, userId: string, contactId: string, phone: string, email: string) {
+  const { phoneKeys } = await import("@/lib/phone-keys");
+  const forms = phone ? phoneKeys(phone).flatMap((k) => [k, `+${k}`]) : [];
+  const ors = [...(email ? [`email_norm.eq.${email}`] : []), ...forms.map((f) => `phone_norm.eq.${f}`)];
+  if (!ors.length) return null;
+  const { data } = await sb
+    .from("contacts")
+    .select("id,display_name,email,phone")
+    .eq("owner_user_id", userId)
+    .is("merged_into", null)
+    .neq("id", contactId)
+    .or(ors.join(","))
+    .limit(1);
+  return data?.[0] ?? null;
+}
+
+/** What else a contact is used on, so the edit form can warn before saving. */
+export const getPersonUsage = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ personId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const sb = context.supabase as any;
+    const { data: p } = await sb.from("schedule_people").select("id,schedule_id,contact_id").eq("id", data.personId).maybeSingle();
+    if (!p) throw new Error("Person not found.");
+    const [{ data: others }, { count: events }] = await Promise.all([
+      sb.from("schedule_people").select("schedule_id").eq("contact_id", p.contact_id).neq("schedule_id", p.schedule_id).is("removed_at", null),
+      sb.from("contact_event_links").select("id", { count: "exact", head: true }).eq("contact_id", p.contact_id),
+    ]);
+    return { otherSchedules: new Set((others ?? []).map((o: any) => o.schedule_id)).size, events: events ?? 0 };
+  });
+
+export const editPerson = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({
+      personId: z.string().uuid(),
+      name: z.string().max(200),
+      phone: z.string().max(40),
+      email: z.string().max(320),
+      channel: z.enum(["email", "sms", "both"]),
+      paused: z.boolean(),
+      smsConsent: z.boolean().default(false),
+      useExistingContactId: z.string().uuid().nullable().optional(),
+    }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const sb = context.supabase as any;
+    // Loaded through the user's own client: RLS returns nothing unless they own the schedule.
+    const { data: p } = await sb.from("schedule_people").select("*, contact:contacts(id,display_name,email,phone)").eq("id", data.personId).is("removed_at", null).maybeSingle();
+    if (!p || !p.contact) throw new Error("Person not found.");
+    const { toE164, validEmail } = await import("@/lib/contact-import.server");
+    const { canonicalPhone } = await import("@/lib/phone-keys");
+    const rawPhone = data.phone.trim();
+    const rawEmail = data.email.trim();
+    const phone = rawPhone ? toE164(rawPhone) : "";
+    const email = rawEmail ? rawEmail.toLowerCase() : "";
+    if (rawPhone && !phone) throw new Error(`"${rawPhone}" is not a valid phone number.`);
+    if (rawEmail && !validEmail(rawEmail)) throw new Error(`"${rawEmail}" is not a valid email address.`);
+    if (!phone && !email) throw new Error("Each person needs a phone number or an email.");
+    if (data.channel === "sms" && !phone) throw new Error("Text only needs a phone number.");
+    if (data.channel === "email" || data.channel === "both") {
+      if (data.channel === "email" && !email) throw new Error("Email only needs an email address.");
+    }
+
+    const oldPhone = p.contact.phone ? canonicalPhone(p.contact.phone) : "";
+    const phoneChanged = canonicalPhone(phone) !== oldPhone;
+    const texts = data.channel !== "email";
+    const needsConsent = texts && (phoneChanged || !p.sms_consent_at);
+    if (needsConsent && !data.smsConsent) {
+      return { ok: false as const, needsConsent: true as const, message: phoneChanged ? "This is a new number. Please confirm this person agreed to get text reminders at it." : "Please confirm this person agreed to get text reminders from you." };
+    }
+
+    const now = new Date().toISOString();
+    const personPatch: Record<string, unknown> = { channel: data.channel, paused: data.paused };
+    if (needsConsent) { personPatch.sms_consent_by = context.userId; personPatch.sms_consent_at = now; }
+    if (phoneChanged) personPatch.first_sms_sent_at = null;
+
+    const other = await findOtherContact(sb, context.userId, p.contact_id, phone, email);
+    if (other) {
+      if (data.useExistingContactId !== other.id) {
+        return { ok: false as const, conflict: { id: other.id, name: other.display_name, phone: other.phone, email: other.email } };
+      }
+      // Swap this schedule person to the existing contact, no duplicate created.
+      const { data: onIt } = await sb.from("schedule_people").select("id,removed_at").eq("schedule_id", p.schedule_id).eq("contact_id", other.id).maybeSingle();
+      if (onIt && !onIt.removed_at) throw new Error(`${other.display_name || "That contact"} is already on this schedule.`);
+      const swapPatch = { ...personPatch, first_sms_sent_at: canonicalPhone(other.phone ?? "") === oldPhone ? p.first_sms_sent_at : null };
+      if (onIt) {
+        // They were removed earlier: bring that row back and retire this one.
+        const { error: e1 } = await sb.from("schedule_people").update({ removed_at: now }).eq("id", p.id);
+        if (e1) throw new Error(e1.message);
+        const { error: e2 } = await sb.from("schedule_people").update({ ...swapPatch, removed_at: null }).eq("id", onIt.id);
+        if (e2) throw new Error(e2.message);
+      } else {
+        const { error } = await sb.from("schedule_people").update({ ...swapPatch, contact_id: other.id }).eq("id", p.id);
+        if (error) throw new Error(error.message);
+      }
+      if (texts && other.phone) await mirrorConsent([other.phone]);
+      return { ok: true as const, swapped: true };
+    }
+
+    const { error: cErr } = await sb
+      .from("contacts")
+      .update({ display_name: data.name.trim() || null, phone: phone || null, email: email || null })
+      .eq("id", p.contact_id);
+    if (cErr) throw new Error(cErr.message);
+    const { error: pErr } = await sb.from("schedule_people").update(personPatch).eq("id", p.id);
+    if (pErr) throw new Error(pErr.message);
+    if (texts && phone && needsConsent) await mirrorConsent([phone]);
+    return { ok: true as const, swapped: false };
+  });
+
+const BULK_REASON: Record<string, string> = {
+  not_found: "Not found on this schedule",
+  no_consent: "No text consent recorded",
+  no_phone: "No phone number",
+  no_email: "No email address",
+  already_active: "Already on this schedule",
+};
+
+export const bulkUpdatePeople = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({
+      scheduleId: z.string().uuid(),
+      personIds: z.array(z.string().uuid()).min(1).max(500),
+      action: z.enum(["remove", "restore", "pause", "resume", "channel"]),
+      channel: z.enum(["email", "sms", "both"]).optional(),
+      smsConsent: z.boolean().default(false),
+    }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const sb = context.supabase as any;
+    await ownedSchedule(sb, data.scheduleId);
+    if (data.action === "channel" && !data.channel) throw new Error("Pick a channel.");
+    const ids = [...new Set(data.personIds)];
+    // RLS only returns rows on schedules the caller owns; the schedule filter keeps it to this one.
+    const { data: rows } = await sb
+      .from("schedule_people")
+      .select("id,contact_id,removed_at,sms_consent_at,contact:contacts(display_name,email,phone)")
+      .eq("schedule_id", data.scheduleId)
+      .in("id", ids);
+    const found = new Map((rows ?? []).map((r: any) => [r.id, r]));
+    const failed: { id: string; name: string | null; reason: string }[] = [];
+    const ok: string[] = [];
+    const consentIds: string[] = [];
+    for (const id of ids) {
+      const r: any = found.get(id);
+      if (!r) { failed.push({ id, name: null, reason: BULK_REASON.not_found }); continue; }
+      const name = r.contact?.display_name || r.contact?.email || r.contact?.phone || null;
+      const active = !r.removed_at;
+      if (data.action === "restore") { if (active) { failed.push({ id, name, reason: BULK_REASON.already_active }); continue; } }
+      else if (!active) { failed.push({ id, name, reason: BULK_REASON.not_found }); continue; }
+      if (data.action === "channel") {
+        const ch = data.channel!;
+        if (ch !== "email" && !r.contact?.phone) { failed.push({ id, name, reason: BULK_REASON.no_phone }); continue; }
+        if (ch === "email" && !r.contact?.email) { failed.push({ id, name, reason: BULK_REASON.no_email }); continue; }
+        if (ch !== "email" && !r.sms_consent_at) {
+          if (!data.smsConsent) { failed.push({ id, name, reason: BULK_REASON.no_consent }); continue; }
+          consentIds.push(id);
+        }
+      }
+      ok.push(id);
+    }
+    const now = new Date().toISOString();
+    if (ok.length) {
+      let patch: Record<string, unknown> = {};
+      if (data.action === "remove") patch = { removed_at: now };
+      if (data.action === "restore") patch = { removed_at: null };
+      if (data.action === "pause") patch = { paused: true };
+      if (data.action === "resume") patch = { paused: false };
+      if (data.action === "channel") patch = { channel: data.channel };
+      const { error } = await sb.from("schedule_people").update(patch).in("id", ok).eq("schedule_id", data.scheduleId);
+      if (error) throw new Error(error.message);
+      if (consentIds.length) {
+        const { error: e2 } = await sb.from("schedule_people").update({ sms_consent_by: context.userId, sms_consent_at: now }).in("id", consentIds);
+        if (e2) throw new Error(e2.message);
+        await mirrorConsent(consentIds.map((i) => (found.get(i) as any)?.contact?.phone).filter(Boolean));
+      }
+    }
+    return { changed: ok.length, changedIds: ok, failed };
+  });
+
 export const listMyContacts = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
