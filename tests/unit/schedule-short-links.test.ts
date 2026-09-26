@@ -7,7 +7,7 @@ import { mergeValues, finalSmsBody, scheduleEmailData } from "@/lib/schedules-en
 
 const TOKEN = "fb293bf39e7f79879003e784e9c780cbf980e11c32bae6ac";
 const person = { id: "p1", rsvp_token: TOKEN, short_code: "Kx7mQ2pRtZ", first_sms_sent_at: "2026-01-01", contact: { display_name: "Chris Kendrick" } };
-const schedule = { title: "Kendrick Family Reunion Call", timezone: "America/New_York", join_url: "https://zoom.us/j/6286719107", description: "Meeting ID: 628 671 9107\nPasscode: 121212", host_name: "Julius Kendrick", host_phone: "+15868238085" };
+const schedule = { title: "Kendrick Family Reunion Call", timezone: "America/New_York", join_url: "https://zoom.us/j/6286719107", meeting_id: "628 671 9107", meeting_passcode: "121212", description: "Meeting ID: 628 671 9107\nPasscode: 121212", host_name: "Julius Kendrick", host_phone: "+15868238085" };
 
 describe("schedule short links", () => {
   it("accepts only 10-character unambiguous codes", () => {
@@ -32,11 +32,14 @@ describe("schedule short links", () => {
     const values = mergeValues(schedule, person, new Date("2026-10-04T20:30:00Z"), "Julius Kendrick");
     const text = finalSmsBody(DEFAULT_MANUAL_SMS + " Confirm: {rsvp}.", values, person, "Julius Kendrick");
     expect(text).toContain("RSVP: https://thekenroecollective.com/a/Kx7mQ2pRtZ");
+    expect(text).toContain("Meeting ID: 628 671 9107");
+    expect(text).toContain("Passcode: 121212");
+    expect(text.match(/Meeting ID:/g)?.length).toBe(1);
     expect(text).toContain("Confirm: https://thekenroecollective.com/a/Kx7mQ2pRtZ .");
     expect(text).not.toContain(TOKEN);
     const long = composeScheduleSms({ title: schedule.title, message: renderTemplate(DEFAULT_MANUAL_SMS, { ...values, rsvp: `https://thekenroecollective.com/sc/${TOKEN}` }), hostLine: values._hostLine, firstText: false });
     const short = finalSmsBody(DEFAULT_MANUAL_SMS, values, person, "Julius Kendrick");
-    expect(smsSegments(long).chars - smsSegments(short).chars).toBe(`sc/${TOKEN}`.length - "a/Kx7mQ2pRtZ".length);
+    expect(smsSegments(short).chars).toBeLessThan(smsSegments(long).chars);
     expect(smsSegments(short).segments).toBeLessThanOrEqual(2);
   });
 
@@ -47,9 +50,40 @@ describe("schedule short links", () => {
     const html = await render(template.component(data as any));
     expect(html).toContain("Will you be there?");
     expect(html).toContain("Add to calendar");
+    expect(html).toContain("Join the call");
+    expect(html).toContain("Meeting ID:");
+    expect(html).toContain("628 671 9107");
+    expect(html).toContain("Passcode:");
     expect(html).not.toContain(EMAIL_RSVP_MARK);
     expect(html).toContain(`href="https://thekenroecollective.com/sc/${TOKEN}"`);
     expect(html.match(/Will you be there\?/g)!.length).toBe(2);
     expect(html).not.toMatch(/>https:\/\/thekenroecollective\.com\/sc\//);
+  });
+
+  it("keeps credentials in reminder, welcome, Send now, and reply-style texts", () => {
+    const values = mergeValues(schedule, person, new Date("2026-10-04T20:30:00Z"), "Julius Kendrick");
+    const bodies = [
+      finalSmsBody("Hi {first_name}, {title} is {when}. Join: {join}", values, person, "Julius Kendrick"),
+      finalSmsBody("Welcome, {first_name}. Join: {join}", values, person, "Julius Kendrick", null),
+      finalSmsBody(DEFAULT_MANUAL_SMS, values, person, "Julius Kendrick"),
+      finalSmsBody("Thanks. Your answer is saved. Join: {join}", values, person, "Julius Kendrick", null),
+    ];
+    for (const body of bodies) {
+      expect(body).toContain("Join: https://zoom.us/j/6286719107");
+      expect(body).toContain("Meeting ID: 628 671 9107");
+      expect(body).toContain("Passcode: 121212");
+      expect(body.length).toBeLessThanOrEqual(480);
+    }
+    expect(bodies[1]).not.toMatch(/^Reminder:/);
+  });
+
+  it.each([
+    [{ ...schedule, join_url: null, meeting_id: null, meeting_passcode: null, dial_in: "+15550101", dial_pin: "44" }, null, null],
+    [{ ...schedule, join_url: null, meeting_id: null, meeting_passcode: null, dial_in: null, dial_pin: null }, null, null],
+  ])("does not invent email meeting credentials", (fixture, expectedId, expectedPasscode) => {
+    const values = mergeValues(fixture, person, new Date("2026-10-04T20:30:00Z"), "Julius Kendrick");
+    const data = scheduleEmailData(fixture, person, values, "{title}", "Hi {first_name}", "Julius Kendrick");
+    expect(data.meetingId).toBe(expectedId);
+    expect(data.meetingPasscode).toBe(expectedPasscode);
   });
 });

@@ -21,8 +21,10 @@ import {
   hostFromSchedule,
   hostSmsLine,
   prettyPhone,
-  normalizeJoinUrl,
   DEFAULT_MANUAL_SMS,
+  scheduleJoinDetails,
+  scheduleJoinLines,
+  withoutProtectedLines,
 } from "@/lib/schedule-messages";
 import { phoneKeys, canonicalPhone } from "@/lib/phone-keys";
 import { eventInstant, eventTimeZone } from "@/lib/datetime";
@@ -38,10 +40,8 @@ type Admin = SupabaseClient<any, any, any>;
 
 /** Make legacy host-entered links tappable without letting one bad saved value break a send. */
 export function safeJoinValue(s: any): string {
-  if (s.join_url) {
-    try { return normalizeJoinUrl(s.join_url) || ""; } catch { return ""; }
-  }
-  return [s.dial_in, s.dial_pin ? `PIN ${s.dial_pin}` : ""].filter(Boolean).join(" ") || s.location || "";
+  const d = scheduleJoinDetails(s);
+  return d.join || [d.dialIn, d.dialPin ? `PIN ${d.dialPin}` : ""].filter(Boolean).join(" ") || d.location;
 }
 
 /** Rebuild occurrences from now - 1 day to now + 90 days. */
@@ -199,6 +199,8 @@ export function mergeValues(s: any, person: any, startsAt: Date, host: string) {
     title: s.title,
     when: whenLabel(startsAt, s.timezone),
     join: safeJoinValue(s),
+    meeting_id: s.meeting_id,
+    passcode: s.meeting_passcode,
     description: s.description,
     // Texts get the short links; emails swap in their own below.
     ...textLinks(person),
@@ -208,33 +210,52 @@ export function mergeValues(s: any, person: any, startsAt: Date, host: string) {
     host_email: h?.email || "",
     host_note: h?.note || "",
     _hostLine: hostSmsLine(h),
+    _joinLines: scheduleJoinLines(s),
   };
 }
 
 /** The exact text a person receives: first-text intro, message, host line, STOP line. */
 export function finalSmsBody(template: string, values: ReturnType<typeof mergeValues>, person: any, host: string, leadLabel?: string | null) {
+  const rendered = renderTemplate(template, values);
+  const required = [
+    ...values._joinLines,
+    values.rsvp ? `RSVP: ${values.rsvp}` : "",
+  ].filter(Boolean);
+  const freeText = withoutProtectedLines(rendered, required);
   return composeScheduleSms({
     title: values.title,
-    message: renderTemplate(template, values),
+    message: freeText,
     hostLine: values._hostLine,
     hostName: host,
     firstText: !person.first_sms_sent_at,
     // Welcome texts pass null here: they are not reminders.
     leadLabel,
+    protectedLines: required,
   });
 }
 
 /** Everything the email template gets: message, calendar button, RSVP link and the host contact block. */
 export function scheduleEmailData(s: any, person: any, values: ReturnType<typeof mergeValues>, subject: string | null, body: string, host: string) {
   const h = hostFromSchedule(s);
+  const explicitMeetingId = body.includes("{meeting_id}");
+  const explicitPasscode = body.includes("{passcode}");
+  const emailValues = {
+    ...values,
+    meeting_id: explicitMeetingId ? values.meeting_id : "",
+    passcode: explicitPasscode ? values.passcode : "",
+    description: String(values.description || "").split("\n").filter((line) => !/^\s*(meeting id|passcode)\s*:/i.test(line)).join("\n"),
+  };
   return {
     subject: renderTemplate(subject || "Reminder: {title}", values),
     // Emails hide links behind words: {rsvp} becomes a "Will you be there?" link, {calendar} the long link.
-    body: renderTemplate(body, { ...values, rsvp: EMAIL_RSVP_MARK, calendar: calendarLink(person.rsvp_token) }),
+    body: renderTemplate(body, { ...emailValues, rsvp: EMAIL_RSVP_MARK, calendar: calendarLink(person.rsvp_token) }),
     senderName: host,
     ctaUrl: calendarLink(person.rsvp_token),
     ctaLabel: "Add to calendar",
     rsvpUrl: personPageLink(person.rsvp_token),
+    joinUrl: scheduleJoinDetails(s).join || null,
+    meetingId: explicitMeetingId ? null : String(s.meeting_id || "").trim() || null,
+    meetingPasscode: explicitPasscode ? null : String(s.meeting_passcode || "").trim() || null,
     hostName: h ? h.name || host : null,
     hostPhone: h?.phone || null,
     hostPhoneLabel: h?.phone ? prettyPhone(h.phone) : null,
@@ -305,7 +326,7 @@ export async function deliverClaimed(args: {
   }
 
   const body = args.plain
-    ? spaceLinkPunctuation(renderTemplate(args.body, values)).slice(0, 320)
+    ? finalSmsBody(args.body, values, person, hostName, null)
     : finalSmsBody(args.body, values, person, hostName, args.leadLabel);
   // A dry run counts toward the daily cap too, so it predicts real holds.
   if (dryRun) { owners.smsToday.set(s.owner_user_id, used + 1); return mark("dry_run"); }
@@ -605,6 +626,8 @@ export function prefill(tpl: string, s: any, startsAt: Date, host: string): stri
     title: s.title || "Our call",
     when: whenLabel(startsAt, s.timezone),
     join: safeJoinValue(s) || "see the invitation",
+    meeting_id: s.meeting_id || "",
+    passcode: s.meeting_passcode || "",
     description: s.description || "",
     host,
     host_name: s.host_name || host,
@@ -612,7 +635,7 @@ export function prefill(tpl: string, s: any, startsAt: Date, host: string): stri
     host_email: s.host_email || "",
     host_note: s.host_note || "",
   };
-  return tpl.replace(/\{(title|when|join|description|host_name|host_phone|host_email|host_note|host)\}/g, (_m, k: string) => map[k] ?? _m);
+  return tpl.replace(/\{(title|when|join|meeting_id|passcode|description|host_name|host_phone|host_email|host_note|host)\}/g, (_m, k: string) => map[k] ?? _m);
 }
 
 /** The step for this date whose send time is closest to now, per channel. */
@@ -722,7 +745,7 @@ export async function manualSendPreview(admin: Admin, userClient: any, userId: s
     entitled: info.entitled,
     capLeft: info.isOwner ? null : Math.max(0, DAILY_SMS_CAP - (owners.smsToday.get(s.owner_user_id) ?? 0)),
     timezone: s.timezone,
-    samplePerson: first ? { firstName: firstName(first.contact?.display_name), needsIntro: !first.first_sms_sent_at, host: s.host_name || info.host, title: s.title, ...textLinks(first) } : null,
+    samplePerson: first ? { firstName: firstName(first.contact?.display_name), needsIntro: !first.first_sms_sent_at, host: s.host_name || info.host, title: s.title, join: safeJoinValue(s), meetingId: s.meeting_id || "", passcode: s.meeting_passcode || "", description: s.description || "", protectedLines: [...scheduleJoinLines(s), `RSVP: ${textLinks(first).rsvp}`], ...textLinks(first) } : null,
     hostLine: hostSmsLine(hostFromSchedule(s)),
     declinedCount: declined.size,
   };

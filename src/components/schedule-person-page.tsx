@@ -71,10 +71,12 @@ export function SchedulePersonView({ page, token }: { page: PersonPageData; toke
           {page.nextLabel ? <p className="mt-2 text-lg">{page.nextLabel}</p> : <p className="mt-2 text-muted-foreground">No upcoming date yet.</p>}
         </section>
 
-        {page.joinUrl || page.dialIn || page.location || page.description ? (
+        {page.joinUrl || page.meetingId || page.meetingPasscode || page.dialIn || page.location || page.description ? (
           <section className="rounded-3xl bg-card p-5 ring-1 ring-ink/5" aria-labelledby="join-details">
             <h2 id="join-details" className="font-serif text-xl">How to join</h2>
             {page.joinUrl ? <a href={page.joinUrl} target="_blank" rel="noreferrer" className="mt-3 inline-block rounded-full bg-velvet px-5 py-2.5 text-sm font-medium text-primary-foreground">Join the call</a> : null}
+            {page.meetingId ? <p className="mt-4 text-sm"><span className="font-medium">Meeting ID:</span> {page.meetingId}</p> : null}
+            {page.meetingPasscode ? <p className="mt-1 text-sm"><span className="font-medium">Passcode:</span> {page.meetingPasscode}</p> : null}
             {page.description ? <p className="mt-4 whitespace-pre-wrap break-words text-sm">{page.description}</p> : null}
             {page.dialIn ? <p className="mt-3 text-sm">Dial in: <a className="underline" href={`tel:${page.dialIn}`}>{page.dialIn}</a>{page.dialPin ? `, PIN ${page.dialPin}` : ""}</p> : null}
             {page.location ? <p className="mt-2 text-sm">{page.location}</p> : null}

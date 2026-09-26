@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { composeScheduleSms, DEFAULT_MANUAL_SMS, normalizeJoinUrl, renderTemplate, smsSegments } from "@/lib/schedule-messages";
+import { composeScheduleSms, DEFAULT_MANUAL_SMS, meetingIdFromUrl, normalizeJoinUrl, normalizeMeetingId, renderTemplate, scheduleJoinLines, smsSegments, withoutMeetingCredentialLines } from "@/lib/schedule-messages";
 
 describe("schedule message presentation", () => {
   it("leads first texts with Reminder, the schedule and keeps attribution and STOP on separate lines", () => {
@@ -79,9 +79,43 @@ describe("schedule message presentation", () => {
     expect(segments.segments).toBeLessThanOrEqual(3);
     expect(segments.chars).toBeGreaterThan(300);
   });
+
+  it("keeps required join details intact when free text is too long", () => {
+    const required = ["Join: https://zoom.us/j/6286719107", "Meeting ID: 628 671 9107", "Passcode: 121212", "RSVP: https://thekenroecollective.com/a/Kx7mQ2pRtZ"];
+    const out = composeScheduleSms({ title: "Reunion", message: "Optional details ".repeat(80), protectedLines: required, hostName: "Chris", firstText: true });
+    expect(out.length).toBeLessThanOrEqual(480);
+    for (const line of required) expect(out).toContain(line);
+    expect(out).toContain("Reply STOP to opt out.");
+  });
+
+  it("supports link credentials, dial-in only, and no join details", () => {
+    expect(scheduleJoinLines({ join_url: "zoom.us/j/6286719107", meeting_id: "628 671 9107", meeting_passcode: "121212" })).toEqual([
+      "Join: https://zoom.us/j/6286719107", "Meeting ID: 628 671 9107", "Passcode: 121212",
+    ]);
+    expect(scheduleJoinLines({ dial_in: "+15550101", dial_pin: "44" })).toEqual(["Dial in: +15550101, PIN 44"]);
+    expect(scheduleJoinLines({})).toEqual([]);
+  });
+
+  it("removes duplicated credential lines from descriptive copy", () => {
+    expect(withoutMeetingCredentialLines("Agenda\nMeeting ID: 628 671 9107\nPasscode: 121212")).toBe("Agenda");
+  });
 });
 
 describe("schedule join-link normalization", () => {
+  it.each([
+    ["https://us05web.zoom.us/j/6286719107?pwd=secret", "628 671 9107"],
+    ["https://meet.google.com/abc-defg-hij", "abc-defg-hij"],
+    ["https://teams.microsoft.com/l/meetup-join/19%3ameeting_example", "19:meeting_example"],
+  ])("extracts the public meeting ID from %s", (input, expected) => expect(meetingIdFromUrl(input)).toBe(expected));
+
+  it("never treats Zoom's pwd parameter as a passcode", () => {
+    expect(meetingIdFromUrl("https://zoom.us/j/6286719107?pwd=private")).toBe("628 671 9107");
+  });
+
+  it("formats a manually entered Zoom meeting ID but preserves other providers' IDs", () => {
+    expect(normalizeMeetingId("6286719107", "https://zoom.us/j/6286719107")).toBe("628 671 9107");
+    expect(normalizeMeetingId("abc-defg-hij", "https://meet.google.com/abc-defg-hij")).toBe("abc-defg-hij");
+  });
   it.each([
     ["www.zoom.com/j/123", "https://www.zoom.com/j/123"],
     ["zoom.us/j/123", "https://zoom.us/j/123"],

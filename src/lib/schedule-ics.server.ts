@@ -14,9 +14,11 @@ export async function schedulePersonIcs(by: { token: string } | { code: string }
           supabaseAdmin.from("schedule_exceptions" as any).select("*").eq("schedule_id", sid),
         ]);
         if (!s) return new Response("Not found", { status: 404 });
-        const { buildScheduleIcs } = await import("@/lib/schedule-rrule");
+        const [{ buildScheduleIcs }, { scheduleJoinLines }] = await Promise.all([import("@/lib/schedule-rrule"), import("@/lib/schedule-messages")]);
         const sc = s as any;
-        const details = [sc.description, sc.join_url ? `Join: ${sc.join_url}` : "", sc.dial_in ? `Dial in: ${sc.dial_in}${sc.dial_pin ? ` PIN ${sc.dial_pin}` : ""}` : ""]
+        const joinLines = scheduleJoinLines(sc);
+        const description = String(sc.description || "").split("\n").filter((line) => !joinLines.some((detail) => detail.toLocaleLowerCase() === line.trim().toLocaleLowerCase())).join("\n");
+        const details = [description, ...joinLines]
           .filter(Boolean)
           .join("\n");
         const ics = buildScheduleIcs({
