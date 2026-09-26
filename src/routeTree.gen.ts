@@ -66,8 +66,10 @@ import { Route as ClaimTokenRouteImport } from './routes/claim.$token'
 import { Route as CheckoutReturnRouteImport } from './routes/checkout.return'
 import { Route as CheckinEventIdRouteImport } from './routes/checkin.$eventId'
 import { Route as CardSlugRouteImport } from './routes/card.$slug'
+import { Route as CalCodeRouteImport } from './routes/cal.$code'
 import { Route as CSlugRouteImport } from './routes/c.$slug'
 import { Route as BringEventIdRouteImport } from './routes/bring.$eventId'
+import { Route as ACodeRouteImport } from './routes/a.$code'
 import { Route as AuthenticatedVendorHubRouteImport } from './routes/_authenticated/vendor-hub'
 import { Route as AuthenticatedReportsRouteImport } from './routes/_authenticated/reports'
 import { Route as AuthenticatedProfileRouteImport } from './routes/_authenticated/profile'
@@ -428,6 +430,11 @@ const CardSlugRoute = CardSlugRouteImport.update({
   path: '/$slug',
   getParentRoute: () => CardRoute,
 } as any)
+const CalCodeRoute = CalCodeRouteImport.update({
+  id: '/cal/$code',
+  path: '/cal/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CSlugRoute = CSlugRouteImport.update({
   id: '/c/$slug',
   path: '/c/$slug',
@@ -436,6 +443,11 @@ const CSlugRoute = CSlugRouteImport.update({
 const BringEventIdRoute = BringEventIdRouteImport.update({
   id: '/bring/$eventId',
   path: '/bring/$eventId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ACodeRoute = ACodeRouteImport.update({
+  id: '/a/$code',
+  path: '/a/$code',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedVendorHubRoute = AuthenticatedVendorHubRouteImport.update({
@@ -906,8 +918,10 @@ export interface FileRoutesByFullPath {
   '/profile': typeof AuthenticatedProfileRoute
   '/reports': typeof AuthenticatedReportsRoute
   '/vendor-hub': typeof AuthenticatedVendorHubRoute
+  '/a/$code': typeof ACodeRoute
   '/bring/$eventId': typeof BringEventIdRoute
   '/c/$slug': typeof CSlugRoute
+  '/cal/$code': typeof CalCodeRoute
   '/card/$slug': typeof CardSlugRoute
   '/checkin/$eventId': typeof CheckinEventIdRoute
   '/checkout/return': typeof CheckoutReturnRoute
@@ -1040,8 +1054,10 @@ export interface FileRoutesByTo {
   '/profile': typeof AuthenticatedProfileRoute
   '/reports': typeof AuthenticatedReportsRoute
   '/vendor-hub': typeof AuthenticatedVendorHubRoute
+  '/a/$code': typeof ACodeRoute
   '/bring/$eventId': typeof BringEventIdRoute
   '/c/$slug': typeof CSlugRoute
+  '/cal/$code': typeof CalCodeRoute
   '/card/$slug': typeof CardSlugRoute
   '/checkin/$eventId': typeof CheckinEventIdRoute
   '/checkout/return': typeof CheckoutReturnRoute
@@ -1177,8 +1193,10 @@ export interface FileRoutesById {
   '/_authenticated/profile': typeof AuthenticatedProfileRoute
   '/_authenticated/reports': typeof AuthenticatedReportsRoute
   '/_authenticated/vendor-hub': typeof AuthenticatedVendorHubRoute
+  '/a/$code': typeof ACodeRoute
   '/bring/$eventId': typeof BringEventIdRoute
   '/c/$slug': typeof CSlugRoute
+  '/cal/$code': typeof CalCodeRoute
   '/card/$slug': typeof CardSlugRoute
   '/checkin/$eventId': typeof CheckinEventIdRoute
   '/checkout/return': typeof CheckoutReturnRoute
@@ -1314,8 +1332,10 @@ export interface FileRouteTypes {
     | '/profile'
     | '/reports'
     | '/vendor-hub'
+    | '/a/$code'
     | '/bring/$eventId'
     | '/c/$slug'
+    | '/cal/$code'
     | '/card/$slug'
     | '/checkin/$eventId'
     | '/checkout/return'
@@ -1448,8 +1468,10 @@ export interface FileRouteTypes {
     | '/profile'
     | '/reports'
     | '/vendor-hub'
+    | '/a/$code'
     | '/bring/$eventId'
     | '/c/$slug'
+    | '/cal/$code'
     | '/card/$slug'
     | '/checkin/$eventId'
     | '/checkout/return'
@@ -1584,8 +1606,10 @@ export interface FileRouteTypes {
     | '/_authenticated/profile'
     | '/_authenticated/reports'
     | '/_authenticated/vendor-hub'
+    | '/a/$code'
     | '/bring/$eventId'
     | '/c/$slug'
+    | '/cal/$code'
     | '/card/$slug'
     | '/checkin/$eventId'
     | '/checkout/return'
@@ -1710,8 +1734,10 @@ export interface RootRouteChildren {
   WorkroomRoute: typeof WorkroomRoute
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  ACodeRoute: typeof ACodeRoute
   BringEventIdRoute: typeof BringEventIdRoute
   CSlugRoute: typeof CSlugRoute
+  CalCodeRoute: typeof CalCodeRoute
   CheckinEventIdRoute: typeof CheckinEventIdRoute
   ClaimTokenRoute: typeof ClaimTokenRoute
   CohostTokenRoute: typeof CohostTokenRoute
@@ -2185,6 +2211,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CardSlugRouteImport
       parentRoute: typeof CardRoute
     }
+    '/cal/$code': {
+      id: '/cal/$code'
+      path: '/cal/$code'
+      fullPath: '/cal/$code'
+      preLoaderRoute: typeof CalCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/c/$slug': {
       id: '/c/$slug'
       path: '/c/$slug'
@@ -2197,6 +2230,13 @@ declare module '@tanstack/react-router' {
       path: '/bring/$eventId'
       fullPath: '/bring/$eventId'
       preLoaderRoute: typeof BringEventIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/a/$code': {
+      id: '/a/$code'
+      path: '/a/$code'
+      fullPath: '/a/$code'
+      preLoaderRoute: typeof ACodeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/vendor-hub': {
@@ -2848,8 +2888,10 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
+  ACodeRoute: ACodeRoute,
   BringEventIdRoute: BringEventIdRoute,
   CSlugRoute: CSlugRoute,
+  CalCodeRoute: CalCodeRoute,
   CheckinEventIdRoute: CheckinEventIdRoute,
   ClaimTokenRoute: ClaimTokenRoute,
   CohostTokenRoute: CohostTokenRoute,

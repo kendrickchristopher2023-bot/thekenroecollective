@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { getWelcome, saveWelcome } from "@/lib/schedules.functions";
+import { textLinks, SAMPLE_SHORT_CODE } from "@/lib/schedule-links";
 import { renderTemplate, firstName, whenLabel, smsSegments, composeScheduleSms, MERGE_FIELDS, hostSmsLine, hostFromSchedule } from "@/lib/schedule-messages";
 import { SKIP_LABEL } from "@/components/schedule-send-now";
 import { toUserMessage } from "@/lib/user-error";
@@ -82,7 +83,8 @@ export function WelcomeSection({ schedule, people, occurrences, onChange }: { sc
     when: nextOcc ? whenLabel(new Date(nextOcc.starts_at), tz) : "",
     join: schedule.join_url || schedule.dial_in || schedule.location || "",
     description: schedule.description || "",
-    calendar: "https://thekenroecollective.com/api/public/schedule-calendar/...",
+    // Texts use the short links, so the preview counts them exactly.
+    ...textLinks({ rsvp_token: "", short_code: sample?.short_code || SAMPLE_SHORT_CODE }),
     host: "",
   };
   const hostLine = hostSmsLine(hostFromSchedule(schedule));
