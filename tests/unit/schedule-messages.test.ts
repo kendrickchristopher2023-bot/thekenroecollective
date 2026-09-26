@@ -2,21 +2,32 @@ import { describe, expect, it } from "vitest";
 import { composeScheduleSms, DEFAULT_MANUAL_SMS, normalizeJoinUrl, renderTemplate, smsSegments } from "@/lib/schedule-messages";
 
 describe("schedule message presentation", () => {
-  it("leads first texts with the schedule and keeps attribution and STOP on separate lines", () => {
+  it("leads first texts with Reminder, the schedule and keeps attribution and STOP on separate lines", () => {
     const out = composeScheduleSms({
       title: "Kendrick Family Reunion Call",
       message: "Hi Chris, our next call is Sunday.\nhttps://example.com/sc/abc",
       hostName: "Chris",
       firstText: true,
     });
-    expect(out).toMatch(/^Kendrick Family Reunion Call\n/);
+    expect(out).toMatch(/^Reminder: Kendrick Family Reunion Call\n/);
     expect(out).toContain("\n\nSent with The Kenroe Collective for Chris.\nReply STOP to opt out.");
     expect(out).not.toContain("abcReply");
   });
 
   it("does not duplicate a title already at the beginning", () => {
     const out = composeScheduleSms({ title: "Reunion Call", message: "Reunion Call starts soon.", firstText: false });
-    expect(out).toBe("Reunion Call starts soon.");
+    expect(out).toBe("Reminder: Reunion Call\nReunion Call starts soon.");
+  });
+
+  it("does not duplicate a Reminder heading already at the beginning", () => {
+    const out = composeScheduleSms({ title: "Reunion Call", message: "Reminder: Reunion Call starts soon.", firstText: false });
+    expect(out).toBe("Reminder: Reunion Call starts soon.");
+  });
+
+  it("leaves welcomes unlabeled when leadLabel is null", () => {
+    const out = composeScheduleSms({ title: "Reunion Call", message: "Welcome! Our first call is soon.", firstText: false, leadLabel: null });
+    expect(out).toBe("Reunion Call\nWelcome! Our first call is soon.");
+    expect(out).not.toContain("Reminder");
   });
 
   it("preserves compliance text when a long body is shortened", () => {
