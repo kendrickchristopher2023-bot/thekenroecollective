@@ -3907,6 +3907,85 @@ export type Database = {
           },
         ]
       }
+      schedule_rsvp_rate_limit: {
+        Row: {
+          hits: number
+          token_hash: string
+          window_start: string
+        }
+        Insert: {
+          hits?: number
+          token_hash: string
+          window_start: string
+        }
+        Update: {
+          hits?: number
+          token_hash?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
+      schedule_rsvps: {
+        Row: {
+          answer: string
+          answered_at: string
+          created_at: string
+          id: string
+          note: string | null
+          occurrence_id: string
+          person_id: string
+          schedule_id: string
+          source: string
+          updated_at: string
+        }
+        Insert: {
+          answer: string
+          answered_at?: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          occurrence_id: string
+          person_id: string
+          schedule_id: string
+          source?: string
+          updated_at?: string
+        }
+        Update: {
+          answer?: string
+          answered_at?: string
+          created_at?: string
+          id?: string
+          note?: string | null
+          occurrence_id?: string
+          person_id?: string
+          schedule_id?: string
+          source?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_rsvps_occurrence_id_fkey"
+            columns: ["occurrence_id"]
+            isOneToOne: false
+            referencedRelation: "schedule_occurrences"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_rsvps_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "schedule_people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_rsvps_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "schedules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       schedules: {
         Row: {
           created_at: string
@@ -3916,6 +3995,10 @@ export type Database = {
           duration_minutes: number
           ends_kind: string
           horizon_until: string | null
+          host_email: string | null
+          host_name: string | null
+          host_note: string | null
+          host_phone: string | null
           id: string
           is_demo: boolean
           join_url: string | null
@@ -3949,6 +4032,10 @@ export type Database = {
           duration_minutes?: number
           ends_kind?: string
           horizon_until?: string | null
+          host_email?: string | null
+          host_name?: string | null
+          host_note?: string | null
+          host_phone?: string | null
           id?: string
           is_demo?: boolean
           join_url?: string | null
@@ -3982,6 +4069,10 @@ export type Database = {
           duration_minutes?: number
           ends_kind?: string
           horizon_until?: string | null
+          host_email?: string | null
+          host_name?: string | null
+          host_note?: string | null
+          host_phone?: string | null
           id?: string
           is_demo?: boolean
           join_url?: string | null
