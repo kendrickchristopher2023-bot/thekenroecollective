@@ -586,10 +586,14 @@ export const bulkUpdatePeople = createServerFn({ method: "POST" })
       if (data.action === "pause") patch = { paused: true };
       if (data.action === "resume") patch = { paused: false };
       if (data.action === "channel") patch = { channel: data.channel };
-      const { error } = await sb.from("schedule_people").update(patch).in("id", ok).eq("schedule_id", data.scheduleId);
-      if (error) throw new Error(error.message);
+      // Consent is written in the same update as the channel, so the "text needs consent" rule never trips.
+      const plain = ok.filter((i) => !consentIds.includes(i));
+      if (plain.length) {
+        const { error } = await sb.from("schedule_people").update(patch).in("id", plain).eq("schedule_id", data.scheduleId);
+        if (error) throw new Error(error.message);
+      }
       if (consentIds.length) {
-        const { error: e2 } = await sb.from("schedule_people").update({ sms_consent_by: context.userId, sms_consent_at: now }).in("id", consentIds);
+        const { error: e2 } = await sb.from("schedule_people").update({ ...patch, sms_consent_by: context.userId, sms_consent_at: now }).in("id", consentIds).eq("schedule_id", data.scheduleId);
         if (e2) throw new Error(e2.message);
         await mirrorConsent(consentIds.map((i) => (found.get(i) as any)?.contact?.phone).filter(Boolean));
       }
