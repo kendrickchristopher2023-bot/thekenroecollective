@@ -19,6 +19,9 @@ import {
   STOP_LINE,
   inQuietHours,
   DEFAULT_STEPS,
+  hostFromSchedule,
+  hostSmsLine,
+  prettyPhone,
 } from "@/lib/schedule-messages";
 import { phoneKeys, canonicalPhone } from "@/lib/phone-keys";
 
@@ -184,21 +187,29 @@ export function guardFor(args: {
 }
 
 export function mergeValues(s: any, person: any, startsAt: Date, host: string) {
+  const h = hostFromSchedule(s);
   return {
     first_name: firstName(person.contact?.display_name),
     title: s.title,
     when: whenLabel(startsAt, s.timezone),
     join: s.join_url || [s.dial_in, s.dial_pin ? `PIN ${s.dial_pin}` : ""].filter(Boolean).join(" ") || s.location,
     calendar: calendarLink(person.rsvp_token),
+    rsvp: personPageLink(person.rsvp_token),
     host,
+    host_name: h?.name || host,
+    host_phone: h?.phone ? prettyPhone(h.phone) : "",
+    host_email: h?.email || "",
+    host_note: h?.note || "",
+    _hostLine: hostSmsLine(h),
   };
 }
 
-/** The exact text a person receives, including the first-text intro. */
+/** The exact text a person receives: first-text intro, message, host line, STOP line. */
 export function finalSmsBody(template: string, values: ReturnType<typeof mergeValues>, person: any, host: string) {
-  let body = renderTemplate(template, values);
-  if (!person.first_sms_sent_at) body = complianceIntro(host) + body + STOP_LINE;
-  return body.slice(0, 480);
+  const intro = person.first_sms_sent_at ? "" : complianceIntro(host);
+  const tail = (values._hostLine || "") + (person.first_sms_sent_at ? "" : STOP_LINE);
+  const room = Math.max(40, 480 - intro.length - tail.length);
+  return intro + renderTemplate(template, values).slice(0, room) + tail;
 }
 
 /**
