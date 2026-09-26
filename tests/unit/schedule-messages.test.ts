@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { composeScheduleSms, DEFAULT_MANUAL_SMS, meetingIdFromUrl, normalizeJoinUrl, renderTemplate, smsSegments } from "@/lib/schedule-messages";
+import { composeScheduleSms, DEFAULT_MANUAL_SMS, meetingIdFromUrl, normalizeJoinUrl, renderTemplate, scheduleJoinLines, smsSegments, withoutMeetingCredentialLines } from "@/lib/schedule-messages";
 
 describe("schedule message presentation", () => {
   it("leads first texts with Reminder, the schedule and keeps attribution and STOP on separate lines", () => {
@@ -78,6 +78,26 @@ describe("schedule message presentation", () => {
     const segments = smsSegments(out);
     expect(segments.segments).toBeLessThanOrEqual(3);
     expect(segments.chars).toBeGreaterThan(300);
+  });
+
+  it("keeps required join details intact when free text is too long", () => {
+    const required = ["Join: https://zoom.us/j/6286719107", "Meeting ID: 628 671 9107", "Passcode: 121212", "RSVP: https://thekenroecollective.com/a/Kx7mQ2pRtZ"];
+    const out = composeScheduleSms({ title: "Reunion", message: "Optional details ".repeat(80), protectedLines: required, hostName: "Chris", firstText: true });
+    expect(out.length).toBeLessThanOrEqual(480);
+    for (const line of required) expect(out).toContain(line);
+    expect(out).toContain("Reply STOP to opt out.");
+  });
+
+  it("supports link credentials, dial-in only, and no join details", () => {
+    expect(scheduleJoinLines({ join_url: "zoom.us/j/6286719107", meeting_id: "628 671 9107", meeting_passcode: "121212" })).toEqual([
+      "Join: https://zoom.us/j/6286719107", "Meeting ID: 628 671 9107", "Passcode: 121212",
+    ]);
+    expect(scheduleJoinLines({ dial_in: "+15550101", dial_pin: "44" })).toEqual(["Dial in: +15550101, PIN 44"]);
+    expect(scheduleJoinLines({})).toEqual([]);
+  });
+
+  it("removes duplicated credential lines from descriptive copy", () => {
+    expect(withoutMeetingCredentialLines("Agenda\nMeeting ID: 628 671 9107\nPasscode: 121212")).toBe("Agenda");
   });
 });
 

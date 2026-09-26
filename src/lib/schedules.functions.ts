@@ -1094,7 +1094,7 @@ export const getPersonPage = createServerFn({ method: "GET" })
     if (!occ?.length) ({ data: occ } = await admin.from("schedule_occurrences").select("id,starts_at,ends_at").eq("schedule_id", p.schedule_id).in("status", ["scheduled", "moved"]).order("starts_at", { ascending: false }).limit(1));
     const o = occ?.[0] ?? null;
     const { data: r } = o ? await admin.from("schedule_rsvps").select("answer,note").eq("occurrence_id", o.id).eq("person_id", p.id).maybeSingle() : { data: null };
-    const { whenLabel, prettyPhone, normalizeJoinUrl } = await import("@/lib/schedule-messages");
+    const { whenLabel, prettyPhone, normalizeJoinUrl, withoutMeetingCredentialLines } = await import("@/lib/schedule-messages");
     let joinUrl: string | null = null;
     try { joinUrl = normalizeJoinUrl(s.join_url as string | null); } catch { joinUrl = null; }
     return {
@@ -1107,7 +1107,7 @@ export const getPersonPage = createServerFn({ method: "GET" })
       meetingId: s.meeting_id as string | null,
       meetingPasscode: s.meeting_passcode as string | null,
       location: s.location as string | null,
-      description: s.description as string | null,
+      description: withoutMeetingCredentialLines(s.description as string | null) || null,
       occurrenceId: (o?.id as string) ?? null,
       nextAt: (o?.starts_at as string) ?? null,
       nextLabel: o ? whenLabel(new Date(o.starts_at), s.timezone) : null,

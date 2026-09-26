@@ -142,6 +142,10 @@ export function scheduleJoinLines(s: any): string[] {
   return [d.join ? `Join: ${d.join}` : "", d.meetingId ? `Meeting ID: ${d.meetingId}` : "", d.passcode ? `Passcode: ${d.passcode}` : "", d.dialIn ? `Dial in: ${d.dialIn}${d.dialPin ? `, PIN ${d.dialPin}` : ""}` : "", !d.join && !d.dialIn && d.location ? `Location: ${d.location}` : ""].filter(Boolean);
 }
 
+export function withoutMeetingCredentialLines(value: string | null | undefined): string {
+  return String(value || "").split("\n").filter((line) => !/^\s*(meeting id|passcode)\s*:/i.test(line)).join("\n").trim();
+}
+
 export interface HostDetails {
   name?: string | null;
   phone?: string | null;
