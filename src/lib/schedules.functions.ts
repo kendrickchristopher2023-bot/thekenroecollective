@@ -204,9 +204,9 @@ export const saveSchedule = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const sb = context.supabase as any;
     await assertCanUse(sb);
-    const { normalizeJoinUrl, meetingIdFromUrl } = await import("@/lib/schedule-messages");
+    const { normalizeJoinUrl, normalizeMeetingId } = await import("@/lib/schedule-messages");
     const join_url = normalizeJoinUrl(data.values.join_url);
-    const v: any = { ...data.values, join_url, meeting_id: data.values.meeting_id?.trim() || meetingIdFromUrl(join_url), meeting_passcode: data.values.meeting_passcode?.trim() || null, rrule: cleanRule(data.values.rrule), ...(await cleanHost(data.values)) };
+    const v: any = { ...data.values, join_url, meeting_id: normalizeMeetingId(data.values.meeting_id, join_url), meeting_passcode: data.values.meeting_passcode?.trim() || null, rrule: cleanRule(data.values.rrule), ...(await cleanHost(data.values)) };
     if (v.ends_kind !== "on_date") v.until_local = null;
     if (v.ends_kind !== "count") v.occurrence_count = null;
     if (!v.rrule) { v.ends_kind = "count"; v.occurrence_count = 1; v.until_local = null; }
@@ -254,9 +254,9 @@ export const splitSchedule = createServerFn({ method: "POST" })
     const untilLocal = d.toISOString().slice(0, 16);
     const { error: e1 } = await sb.from("schedules").update({ ends_kind: "on_date", until_local: untilLocal, occurrence_count: null }).eq("id", data.id);
     if (e1) throw new Error(e1.message);
-    const { normalizeJoinUrl, meetingIdFromUrl } = await import("@/lib/schedule-messages");
+    const { normalizeJoinUrl, normalizeMeetingId } = await import("@/lib/schedule-messages");
     const join_url = normalizeJoinUrl(data.values.join_url);
-    const v = { ...data.values, join_url, meeting_id: data.values.meeting_id?.trim() || meetingIdFromUrl(join_url), meeting_passcode: data.values.meeting_passcode?.trim() || null, rrule: cleanRule(data.values.rrule), ...(await cleanHost(data.values)) };
+    const v = { ...data.values, join_url, meeting_id: normalizeMeetingId(data.values.meeting_id, join_url), meeting_passcode: data.values.meeting_passcode?.trim() || null, rrule: cleanRule(data.values.rrule), ...(await cleanHost(data.values)) };
     const { data: row, error } = await sb
       .from("schedules")
       .insert({ ...v, owner_user_id: context.userId, parent_schedule_id: data.id, is_demo: old.is_demo, source_type: old.source_type, source_id: old.source_id })

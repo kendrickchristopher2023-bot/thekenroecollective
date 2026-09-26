@@ -109,6 +109,17 @@ export function formatZoomMeetingId(value: string): string {
   return value.trim();
 }
 
+export function normalizeMeetingId(value: string | null | undefined, joinUrl: string | null | undefined): string | null {
+  const id = String(value || "").trim();
+  if (!id) return meetingIdFromUrl(joinUrl);
+  try {
+    const url = new URL(normalizeJoinUrl(joinUrl) || "");
+    return url.hostname.toLocaleLowerCase().endsWith("zoom.us") ? formatZoomMeetingId(id) : id;
+  } catch {
+    return id;
+  }
+}
+
 /** Extracts a public meeting identifier. Password-bearing URL parameters are intentionally ignored. */
 export function meetingIdFromUrl(value: string | null | undefined): string | null {
   let url: URL;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { composeScheduleSms, DEFAULT_MANUAL_SMS, meetingIdFromUrl, normalizeJoinUrl, renderTemplate, scheduleJoinLines, smsSegments, withoutMeetingCredentialLines } from "@/lib/schedule-messages";
+import { composeScheduleSms, DEFAULT_MANUAL_SMS, meetingIdFromUrl, normalizeJoinUrl, normalizeMeetingId, renderTemplate, scheduleJoinLines, smsSegments, withoutMeetingCredentialLines } from "@/lib/schedule-messages";
 
 describe("schedule message presentation", () => {
   it("leads first texts with Reminder, the schedule and keeps attribution and STOP on separate lines", () => {
@@ -110,6 +110,11 @@ describe("schedule join-link normalization", () => {
 
   it("never treats Zoom's pwd parameter as a passcode", () => {
     expect(meetingIdFromUrl("https://zoom.us/j/6286719107?pwd=private")).toBe("628 671 9107");
+  });
+
+  it("formats a manually entered Zoom meeting ID but preserves other providers' IDs", () => {
+    expect(normalizeMeetingId("6286719107", "https://zoom.us/j/6286719107")).toBe("628 671 9107");
+    expect(normalizeMeetingId("abc-defg-hij", "https://meet.google.com/abc-defg-hij")).toBe("abc-defg-hij");
   });
   it.each([
     ["www.zoom.com/j/123", "https://www.zoom.com/j/123"],

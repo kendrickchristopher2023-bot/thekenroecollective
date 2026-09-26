@@ -59,4 +59,31 @@ describe("schedule short links", () => {
     expect(html.match(/Will you be there\?/g)!.length).toBe(2);
     expect(html).not.toMatch(/>https:\/\/thekenroecollective\.com\/sc\//);
   });
+
+  it("keeps credentials in reminder, welcome, Send now, and reply-style texts", () => {
+    const values = mergeValues(schedule, person, new Date("2026-10-04T20:30:00Z"), "Julius Kendrick");
+    const bodies = [
+      finalSmsBody("Hi {first_name}, {title} is {when}. Join: {join}", values, person, "Julius Kendrick"),
+      finalSmsBody("Welcome, {first_name}. Join: {join}", values, person, "Julius Kendrick", null),
+      finalSmsBody(DEFAULT_MANUAL_SMS, values, person, "Julius Kendrick"),
+      finalSmsBody("Thanks. Your answer is saved. Join: {join}", values, person, "Julius Kendrick", null),
+    ];
+    for (const body of bodies) {
+      expect(body).toContain("Join: https://zoom.us/j/6286719107");
+      expect(body).toContain("Meeting ID: 628 671 9107");
+      expect(body).toContain("Passcode: 121212");
+      expect(body.length).toBeLessThanOrEqual(480);
+    }
+    expect(bodies[1]).not.toMatch(/^Reminder:/);
+  });
+
+  it.each([
+    [{ ...schedule, join_url: null, meeting_id: null, meeting_passcode: null, dial_in: "+15550101", dial_pin: "44" }, null, null],
+    [{ ...schedule, join_url: null, meeting_id: null, meeting_passcode: null, dial_in: null, dial_pin: null }, null, null],
+  ])("does not invent email meeting credentials", (fixture, expectedId, expectedPasscode) => {
+    const values = mergeValues(fixture, person, new Date("2026-10-04T20:30:00Z"), "Julius Kendrick");
+    const data = scheduleEmailData(fixture, person, values, "{title}", "Hi {first_name}", "Julius Kendrick");
+    expect(data.meetingId).toBe(expectedId);
+    expect(data.meetingPasscode).toBe(expectedPasscode);
+  });
 });
