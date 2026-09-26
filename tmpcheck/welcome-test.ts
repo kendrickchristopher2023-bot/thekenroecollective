@@ -63,7 +63,7 @@ try {
   try { C = await addPerson(owner.id, s.id, "Cy Noconsent", "+12025550103", "cy@example.com", "both", false); }
   catch (e: any) { log("No-consent text person refused by database:", e.message); C = await addPerson(owner.id, s.id, "Cy Noconsent", "+12025550103", "cy@example.com", "email", false); }
   cleanup.phones.push("+12025550102");
-  await admin.from("sms_consent_log").insert({ phone_number: "+12025550102", opted_out: true, source: "test" } as any);
+  await admin.from("sms_consent_log").insert({ phone_number: "+12025550102", opted_out: true, opted_out_at: new Date().toISOString() } as any);
   const run = (w: string, extra: any = {}) => runTick(admin as any, { now: at(w), dryRun: true, ownerUserId: owner.id, ...extra });
 
   log("\n1) Feb 28 7:00 PM, email 1 week before is due, welcome is Mar 3 6:00 PM");
@@ -126,7 +126,7 @@ try {
   log("\nsms_outbox before/after:", outboxBefore, outboxAfter);
 } finally {
   for (const id of cleanup.schedules) await admin.from("schedules").delete().eq("id", id);
-  for (const ph of cleanup.phones) await admin.from("sms_consent_log").delete().eq("phone_number", ph).eq("source", "test");
+  for (const ph of cleanup.phones) await admin.from("sms_consent_log").delete().eq("phone_number", ph);
   for (const u of cleanup.users) {
     await admin.from("contacts").delete().eq("owner_user_id", u);
     await admin.from("subscriptions").delete().eq("user_id", u);
