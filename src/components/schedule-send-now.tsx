@@ -231,7 +231,7 @@ function SendNowPanel({ scheduleId, people, onClose }: { scheduleId: string; peo
                   <p className="text-sm font-medium">Text</p>
                   <textarea className={field} rows={3} value={smsBody} onChange={(e) => setSmsBody(e.target.value)} aria-label="Text message" maxLength={480} />
                   <p className="mt-3 text-xs font-medium text-muted-foreground">Preview{sample ? ` for ${sample.firstName}` : ""}</p>
-                  <p className="mt-1 whitespace-pre-wrap rounded-2xl bg-secondary px-4 py-3 text-sm">{smsPreview}</p>
+                  <p className="mt-1 whitespace-pre-wrap break-all rounded-2xl bg-secondary px-4 py-3 text-sm">{smsPreview}</p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {seg.chars} characters, {plural(seg.segments, "text segment")}{seg.unicode ? " (emoji or special characters use shorter segments)" : ""}.
                     {plan?.hostLine ? ` Includes your contact line (${hostSeg.chars} characters).` : ""}

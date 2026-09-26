@@ -265,7 +265,8 @@ export async function deliverClaimed(args: {
   if (g) return mark(g.status, g.reason);
 
   const c = person.contact ?? {};
-  const values = mergeValues(s, person, startsAt, info.host);
+  const hostName = s.host_name || info.host;
+  const values = mergeValues(s, person, startsAt, hostName);
 
   if (channel === "email") {
     if (dryRun) return mark("dry_run");
@@ -275,8 +276,8 @@ export async function deliverClaimed(args: {
       recipientEmail: c.email,
       idempotencyKey: `sched-${sendId}`,
       label: "schedule_reminder",
-      fromName: info.host,
-      templateData: scheduleEmailData(s, person, values, args.subject, args.body, info.host),
+      fromName: hostName,
+      templateData: scheduleEmailData(s, person, values, args.subject, args.body, hostName),
     });
     if (r.ok) {
       const status = r.reason === "demo" ? "blocked" : "sent";
@@ -286,7 +287,7 @@ export async function deliverClaimed(args: {
     return mark("failed", r.reason ?? "email_failed");
   }
 
-  const body = finalSmsBody(args.body, values, person, info.host);
+  const body = finalSmsBody(args.body, values, person, hostName);
   // A dry run counts toward the daily cap too, so it predicts real holds.
   if (dryRun) { owners.smsToday.set(s.owner_user_id, used + 1); return mark("dry_run"); }
   const { data: ob, error: obErr } = await admin
@@ -687,7 +688,7 @@ export async function manualSendPreview(admin: Admin, userClient: any, userId: s
     entitled: info.entitled,
     capLeft: info.isOwner ? null : Math.max(0, DAILY_SMS_CAP - (owners.smsToday.get(s.owner_user_id) ?? 0)),
     timezone: s.timezone,
-    samplePerson: first ? { firstName: firstName(first.contact?.display_name), needsIntro: !first.first_sms_sent_at, host: info.host, calendar: calendarLink(first.rsvp_token), rsvp: personPageLink(first.rsvp_token) } : null,
+    samplePerson: first ? { firstName: firstName(first.contact?.display_name), needsIntro: !first.first_sms_sent_at, host: s.host_name || info.host, calendar: calendarLink(first.rsvp_token), rsvp: personPageLink(first.rsvp_token) } : null,
     hostLine: hostSmsLine(hostFromSchedule(s)),
     declinedCount: declined.size,
   };
