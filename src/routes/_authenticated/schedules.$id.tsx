@@ -439,7 +439,6 @@ function PeoplePanel({ scheduleId, people, removedPeople, isDemo, onChange }: { 
 
   return (
     <div className="space-y-6">
-      <RsvpSuggestion scheduleId={scheduleId} steps={steps} onDone={onChange} />
       <section className="rounded-3xl bg-card p-6 ring-1 ring-ink/5 sm:p-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-serif text-xl">Add people</h2>
@@ -553,6 +552,7 @@ function RemindersPanel({ data, scheduleId, steps, problems, history, people, on
 
   return (
     <div className="space-y-6">
+      <RsvpSuggestion scheduleId={scheduleId} steps={steps} onDone={onChange} />
       <WelcomeSection schedule={data.schedule} people={people} occurrences={data.occurrences} onChange={onChange} />
       <section className="rounded-3xl bg-card p-6 ring-1 ring-ink/5 sm:p-8">
         <h2 className="font-serif text-xl">Reminder plan</h2>
