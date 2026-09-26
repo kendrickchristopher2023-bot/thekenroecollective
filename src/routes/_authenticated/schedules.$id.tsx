@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { ArrowLeft } from "lucide-react";
 import { SiteFooter, SiteNav } from "@/components/site-nav";
 import { SkeletonPanel } from "@/components/skeletons";
+import { SchedulePeopleList } from "@/components/schedule-people-list";
 import { ScheduleImport } from "@/components/schedule-import";
 import { SendNowButton, SKIP_LABEL } from "@/components/schedule-send-now";
 import {
@@ -149,7 +150,7 @@ function ScheduleEditor() {
               }}
             />
           ) : null}
-          {data && tab === "people" ? <PeoplePanel scheduleId={id} people={data.people} isDemo={isDemo} onChange={refresh} /> : null}
+          {data && tab === "people" ? <PeoplePanel scheduleId={id} people={data.people} removedPeople={(data as any).removedPeople ?? []} isDemo={isDemo} onChange={refresh} /> : null}
           {data && tab === "reminders" ? <RemindersPanel scheduleId={id} steps={data.steps} problems={data.problems} history={data.history ?? []} people={data.people} onChange={refresh} /> : null}
           {data && tab === "upcoming" ? <UpcomingPanel data={data} onChange={refresh} /> : null}
         </div>
@@ -364,9 +365,8 @@ function DetailsForm({ initial, disabled, onSaved }: { initial: any | null; disa
 
 // ---------------- People ----------------
 
-function PeoplePanel({ scheduleId, people, isDemo, onChange }: { scheduleId: string; people: any[]; isDemo: boolean; onChange: () => void }) {
+function PeoplePanel({ scheduleId, people, removedPeople, isDemo, onChange }: { scheduleId: string; people: any[]; removedPeople: any[]; isDemo: boolean; onChange: () => void }) {
   const add = useServerFn(addPeople);
-  const upd = useServerFn(updatePerson);
   const loadContacts = useServerFn(listMyContacts);
   const [book, setBook] = useState<{ contacts: any[]; groups: any[] } | null>(null);
   const [name, setName] = useState("");
@@ -469,39 +469,7 @@ function PeoplePanel({ scheduleId, people, isDemo, onChange }: { scheduleId: str
         )}
       </section>
 
-      <section className="rounded-3xl bg-card p-6 ring-1 ring-ink/5 sm:p-8">
-        <h2 className="font-serif text-xl">On this schedule</h2>
-        {!people.length ? <p className="mt-3 text-sm text-muted-foreground">Nobody yet.</p> : (
-          <ul className="mt-4 divide-y divide-ink/5">
-            {people.map((p) => (
-              <li key={p.id} className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center">
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{p.contact?.display_name || p.contact?.email || p.contact?.phone}</p>
-                  <p className="truncate text-xs text-muted-foreground">{[p.contact?.email, p.contact?.phone].filter(Boolean).join(" · ")}{p.contact?.email_opt_out ? " · unsubscribed from email" : ""}</p>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <select className="rounded-full border border-ink/10 bg-background px-3 py-1.5 text-xs" value={p.channel} aria-label="Reminder channel"
-                    onChange={async (e) => {
-                      const ch = e.target.value as any;
-                      let ok = !!p.sms_consent_at || ch === "email";
-                      if (!ok) ok = await confirmDialog({ title: "Text reminders", body: "Did this person agree to get text reminders from you?", confirmLabel: "Yes, they agreed" });
-                      if (!ok) return;
-                      try { await upd({ data: { personId: p.id, channel: ch, smsConsent: true } }); onChange(); } catch (err) { toast.error(toUserMessage(err)); }
-                    }}>
-                    <option value="both">Email and text</option><option value="email">Email only</option><option value="sms">Text only</option>
-                  </select>
-                  <button type="button" className="rounded-full bg-secondary px-3 py-1.5 text-xs" onClick={async () => { try { await upd({ data: { personId: p.id, paused: !p.paused } }); onChange(); } catch (err) { toast.error(toUserMessage(err)); } }}>
-                    {p.paused ? "Resume" : "Pause"}
-                  </button>
-                  <button type="button" className="rounded-full px-3 py-1.5 text-xs text-destructive hover:bg-destructive/10" onClick={async () => { try { await upd({ data: { personId: p.id, remove: true } }); onChange(); } catch (err) { toast.error(toUserMessage(err)); } }}>
-                    Remove
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      <SchedulePeopleList scheduleId={scheduleId} people={people} removedPeople={removedPeople} onChange={onChange} />
     </div>
   );
 }
