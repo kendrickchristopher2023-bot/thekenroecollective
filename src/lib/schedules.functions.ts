@@ -202,7 +202,8 @@ export const saveSchedule = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const sb = context.supabase as any;
     await assertCanUse(sb);
-    const v: any = { ...data.values, rrule: cleanRule(data.values.rrule), ...(await cleanHost(data.values)) };
+    const { normalizeJoinUrl } = await import("@/lib/schedule-messages");
+    const v: any = { ...data.values, join_url: normalizeJoinUrl(data.values.join_url), rrule: cleanRule(data.values.rrule), ...(await cleanHost(data.values)) };
     if (v.ends_kind !== "on_date") v.until_local = null;
     if (v.ends_kind !== "count") v.occurrence_count = null;
     if (!v.rrule) { v.ends_kind = "count"; v.occurrence_count = 1; v.until_local = null; }
@@ -231,8 +232,9 @@ export const saveSchedule = createServerFn({ method: "POST" })
       const { error: stErr } = await sb.from("schedule_reminder_steps").insert(DEFAULT_STEPS.map((s) => ({ ...s, schedule_id: id })));
       if (stErr) throw new Error(stErr.message);
     }
-    await rebuild(id!);
-    return { id: id! };
+    if (!id) throw new Error("The schedule could not be saved.");
+    await rebuild(id);
+    return { id };
   });
 
 /** "This and all future": end the old series the day before, start a new one. */
@@ -249,7 +251,8 @@ export const splitSchedule = createServerFn({ method: "POST" })
     const untilLocal = d.toISOString().slice(0, 16);
     const { error: e1 } = await sb.from("schedules").update({ ends_kind: "on_date", until_local: untilLocal, occurrence_count: null }).eq("id", data.id);
     if (e1) throw new Error(e1.message);
-    const v = { ...data.values, rrule: cleanRule(data.values.rrule) };
+    const { normalizeJoinUrl } = await import("@/lib/schedule-messages");
+    const v = { ...data.values, join_url: normalizeJoinUrl(data.values.join_url), rrule: cleanRule(data.values.rrule), ...(await cleanHost(data.values)) };
     const { data: row, error } = await sb
       .from("schedules")
       .insert({ ...v, owner_user_id: context.userId, parent_schedule_id: data.id, is_demo: old.is_demo, source_type: old.source_type, source_id: old.source_id })
@@ -1087,12 +1090,14 @@ export const getPersonPage = createServerFn({ method: "GET" })
     if (!occ?.length) ({ data: occ } = await admin.from("schedule_occurrences").select("id,starts_at,ends_at").eq("schedule_id", p.schedule_id).in("status", ["scheduled", "moved"]).order("starts_at", { ascending: false }).limit(1));
     const o = occ?.[0] ?? null;
     const { data: r } = o ? await admin.from("schedule_rsvps").select("answer,note").eq("occurrence_id", o.id).eq("person_id", p.id).maybeSingle() : { data: null };
-    const { whenLabel, prettyPhone } = await import("@/lib/schedule-messages");
+    const { whenLabel, prettyPhone, normalizeJoinUrl } = await import("@/lib/schedule-messages");
+    let joinUrl: string | null = null;
+    try { joinUrl = normalizeJoinUrl(s.join_url as string | null); } catch { joinUrl = null; }
     return {
       firstName: String(p.contact?.display_name ?? "").split(/\s+/)[0] || "",
       title: s.title as string,
       timezone: s.timezone as string,
-      joinUrl: s.join_url as string | null,
+      joinUrl,
       dialIn: s.dial_in as string | null,
       dialPin: s.dial_pin as string | null,
       location: s.location as string | null,

@@ -27,7 +27,7 @@ import {
   runScheduleEngine,
 } from "@/lib/schedules.functions";
 import { buildRrule, describeRule, monthDayWarning, parseRepeat, WEEKDAYS, ordinal, type RepeatInput, type Weekday } from "@/lib/schedule-rrule";
-import { whenLabel, offsetLabel, DEFAULT_STEPS, MERGE_FIELDS, NUDGE_STEP, type StepDraft } from "@/lib/schedule-messages";
+import { whenLabel, offsetLabel, DEFAULT_STEPS, MERGE_FIELDS, NUDGE_STEP, composeScheduleSms, smsSegments, type StepDraft } from "@/lib/schedule-messages";
 import { toUserMessage } from "@/lib/user-error";
 import { confirmDialog } from "@/lib/confirm-dialog";
 
@@ -598,7 +598,11 @@ function RemindersPanel({ data, scheduleId, steps, problems, history, people, is
               </div>
               {s.channel === "email" ? <input className={field} value={s.subject ?? ""} placeholder="Subject" aria-label="Subject" onChange={(e) => up(i, { subject: e.target.value })} /> : null}
               <textarea className={field} rows={s.channel === "email" ? 5 : 2} value={s.body} aria-label="Message" onChange={(e) => up(i, { body: e.target.value })} />
-              {s.channel === "sms" ? <p className="mt-1 text-xs text-muted-foreground">{s.body.length} characters. The first text to each person also says it is from you and "Reply STOP to opt out."</p> : null}
+              {s.channel === "sms" ? (() => {
+                const sample = composeScheduleSms({ title: data.schedule.title, message: s.body, hostName: data.schedule.host_name || "your host", firstText: true });
+                const segments = smsSegments(sample);
+                return <p className="mt-1 text-xs text-muted-foreground">Final first-text preview: {segments.chars} characters, {segments.segments} {segments.segments === 1 ? "segment" : "segments"}. It starts with the schedule name and includes Kenroe attribution and "Reply STOP to opt out."{segments.segments > 2 ? " This is a long text and may cost more to deliver." : ""}</p>;
+              })() : null}
               {!s.is_starting_now ? (
                 <label className="mt-2 flex items-center gap-2 text-sm">
                   <input type="checkbox" className="h-4 w-4" checked={s.audience === "no_answer"} onChange={(e) => up(i, { audience: e.target.checked ? "no_answer" : "all" })} />

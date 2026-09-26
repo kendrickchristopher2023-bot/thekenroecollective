@@ -68,14 +68,21 @@ function PersonPage() {
   return (
     <main className="min-h-screen bg-paper px-5 py-10">
       <div className="mx-auto max-w-md space-y-5">
-        <div>
+        <section aria-labelledby="schedule-title">
           {page.firstName ? <p className="text-sm text-muted-foreground">Hi {page.firstName},</p> : null}
-          <h1 className="font-serif text-3xl">{page.title}</h1>
+          <h1 id="schedule-title" className="font-serif text-3xl">{page.title}</h1>
           {page.nextLabel ? <p className="mt-2 text-lg">{page.nextLabel}</p> : <p className="mt-2 text-muted-foreground">No upcoming date yet.</p>}
-          {page.joinUrl ? <a href={page.joinUrl} className="mt-3 inline-block rounded-full bg-velvet px-5 py-2.5 text-sm font-medium text-primary-foreground">Join the call</a> : null}
-          {page.dialIn ? <p className="mt-2 text-sm">Dial in: <a className="underline" href={`tel:${page.dialIn}`}>{page.dialIn}</a>{page.dialPin ? `, PIN ${page.dialPin}` : ""}</p> : null}
-          {page.location ? <p className="mt-2 text-sm">{page.location}</p> : null}
-        </div>
+        </section>
+
+        {page.joinUrl || page.dialIn || page.location || page.description ? (
+          <section className="rounded-3xl bg-card p-5 ring-1 ring-ink/5" aria-labelledby="join-details">
+            <h2 id="join-details" className="font-serif text-xl">How to join</h2>
+            {page.joinUrl ? <a href={page.joinUrl} target="_blank" rel="noreferrer" className="mt-3 inline-block rounded-full bg-velvet px-5 py-2.5 text-sm font-medium text-primary-foreground">Join the call</a> : null}
+            {page.description ? <p className="mt-4 whitespace-pre-wrap break-words text-sm">{page.description}</p> : null}
+            {page.dialIn ? <p className="mt-3 text-sm">Dial in: <a className="underline" href={`tel:${page.dialIn}`}>{page.dialIn}</a>{page.dialPin ? `, PIN ${page.dialPin}` : ""}</p> : null}
+            {page.location ? <p className="mt-2 text-sm">{page.location}</p> : null}
+          </section>
+        ) : null}
 
         {page.occurrenceId ? (
           <section className="rounded-3xl bg-card p-5 ring-1 ring-ink/5">
