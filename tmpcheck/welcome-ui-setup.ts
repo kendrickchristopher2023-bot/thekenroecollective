@@ -14,7 +14,7 @@ if (mode === "clean") {
   const { data: u } = await admin.auth.admin.createUser({ email, password: "Test-pass-12345!", email_confirm: true });
   const uid = u.user!.id;
   await admin.from("subscriptions").insert({ user_id: uid, product_id: "manual_atelier_test", price_id: "atelier_monthly", status: "active", stripe_subscription_id: `manual_test_${Date.now()}`, stripe_customer_id: "manual_test", environment: "sandbox" });
-  const { data: s } = await admin.from("schedules").insert({ owner_user_id: uid, title: "Example Family Monthly Call", kind: "call", start_local: "2027-03-07T16:30", timezone: "America/New_York", duration_minutes: 60, rrule: "FREQ=MONTHLY;BYDAY=1SU", ends_kind: "never", join_url: "https://example.com/join" }).select("id").single();
+  const { data: s } = await admin.from("schedules").insert({ owner_user_id: uid, title: "Example Family Monthly Call", kind: "call", start_local: "2026-11-01T16:30", timezone: "America/New_York", duration_minutes: 60, rrule: "FREQ=MONTHLY;BYDAY=1SU", ends_kind: "never", join_url: "https://example.com/join" }).select("id").single();
   const steps = [
     { offset_minutes: -10080, channel: "email", subject: "Next week: {title}", body: "Hi {first_name}, {title} is {when}.", is_starting_now: false, position: 0 },
     { offset_minutes: -1440, channel: "sms", body: "Hi {first_name}, {title} is tomorrow.", is_starting_now: false, position: 1 },

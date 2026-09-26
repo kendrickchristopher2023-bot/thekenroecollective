@@ -5,6 +5,7 @@ import { getWelcome, saveWelcome } from "@/lib/schedules.functions";
 import { renderTemplate, firstName, whenLabel, smsSegments, complianceIntro, STOP_LINE, MERGE_FIELDS } from "@/lib/schedule-messages";
 import { SKIP_LABEL } from "@/components/schedule-send-now";
 import { toUserMessage } from "@/lib/user-error";
+import { eventInstant } from "@/lib/datetime";
 
 type Channel = "email" | "sms" | "both";
 
@@ -83,7 +84,7 @@ export function WelcomeSection({ schedule, people, occurrences, onChange }: { sc
     calendar: "https://thekenroecollective.com/api/public/schedule-calendar/...",
     host: "",
   };
-  const smsText = (sample && !sample.first_sms_sent_at ? complianceIntro("you") : "") + renderTemplate(body, values) + (sample && !sample.first_sms_sent_at ? STOP_LINE : "");
+  const smsText = (sample && !sample.first_sms_sent_at ? complianceIntro("[your name]") : "") + renderTemplate(body, values) + (sample && !sample.first_sms_sent_at ? STOP_LINE : "");
   const seg = smsSegments(smsText);
 
   if (!w) return <section className="rounded-3xl bg-card p-6 ring-1 ring-ink/5 sm:p-8"><h2 className="font-serif text-xl">Welcome message</h2><p className="mt-2 text-sm text-muted-foreground">Loading...</p></section>;
@@ -141,7 +142,7 @@ export function WelcomeSection({ schedule, people, occurrences, onChange }: { sc
         <div className="mt-5 space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <label className={label}>
-              Date and time ({zoneShort(tz)}, {tz.replace(/_/g, " ")})
+              Date and time ({zoneShort(tz, local ? eventInstant(local, tz) : new Date())}, {tz.replace(/_/g, " ")})
               <input type="datetime-local" className={field} value={local} onChange={(e) => setLocal(e.target.value)} aria-label="Welcome date and time" />
             </label>
             <label className={label}>

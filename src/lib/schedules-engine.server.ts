@@ -447,7 +447,16 @@ async function welcomeOccurrence(admin: Admin, s: any) {
     .gte("starts_at", s.welcome_at)
     .order("starts_at")
     .limit(1);
-  return (data as any)?.[0] ?? null;
+  if ((data as any)?.[0]) return (data as any)[0];
+  // The first date is past the 90-day window: work it out from the rule and
+  // attach the history row to the latest stored date.
+  const { data: exRows } = await admin.from("schedule_exceptions").select("*").eq("schedule_id", s.id);
+  const from = new Date(s.welcome_at);
+  const next = expandOccurrences(s as ScheduleRule, (exRows ?? []) as ScheduleException[], from, new Date(from.getTime() + 400 * 86_400_000))
+    .find((o) => o.status !== "skipped" && o.status !== "cancelled");
+  const { data: last } = await admin.from("schedule_occurrences").select("id").eq("schedule_id", s.id).order("starts_at", { ascending: false }).limit(1);
+  if (!next || !(last as any)?.[0]) return null;
+  return { id: (last as any)[0].id, starts_at: next.starts_at.toISOString() };
 }
 
 async function runWelcome(
