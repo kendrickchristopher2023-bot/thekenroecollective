@@ -182,12 +182,16 @@ export function composeScheduleSms(args: {
   hostLine?: string;
   hostName?: string;
   firstText?: boolean;
+  /** Word above the title, e.g. "Reminder". Pass null for messages that are not reminders (welcomes). */
+  leadLabel?: string | null;
   maxChars?: number;
 }): string {
   const title = args.title.trim() || "Schedule reminder";
   const message = args.message.trim();
-  const startsWithTitle = message.toLocaleLowerCase().startsWith(title.toLocaleLowerCase());
-  const lead = startsWithTitle ? message : `${title}\n${message}`;
+  const label = args.leadLabel === undefined ? "Reminder" : args.leadLabel;
+  const heading = label ? `${label}: ${title}` : title;
+  const startsWithHeading = message.toLocaleLowerCase().startsWith(heading.toLocaleLowerCase());
+  const lead = startsWithHeading ? message : `${heading}\n${message}`;
   const tail = [args.hostLine?.trim(), args.firstText ? complianceIntro(args.hostName || "your host") : "", args.firstText ? STOP_LINE : ""]
     .filter(Boolean)
     .join("\n");

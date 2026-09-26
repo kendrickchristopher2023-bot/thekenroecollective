@@ -86,7 +86,7 @@ export function WelcomeSection({ schedule, people, occurrences, onChange }: { sc
     host: "",
   };
   const hostLine = hostSmsLine(hostFromSchedule(schedule));
-  const smsText = composeScheduleSms({ title: schedule.title, message: renderTemplate(body, values), hostLine, hostName: schedule.host_name || "[your name]", firstText: !!sample && !sample.first_sms_sent_at });
+  const smsText = composeScheduleSms({ title: schedule.title, message: renderTemplate(body, values), hostLine, hostName: schedule.host_name || "[your name]", firstText: !!sample && !sample.first_sms_sent_at, leadLabel: null });
   const seg = smsSegments(smsText);
 
   if (!w) return <section className="rounded-3xl bg-card p-6 ring-1 ring-ink/5 sm:p-8"><h2 className="font-serif text-xl">Welcome message</h2><p className="mt-2 text-sm text-muted-foreground">Loading...</p></section>;
