@@ -113,9 +113,13 @@ function SendNowPanel({ scheduleId, people, onClose }: { scheduleId: string; peo
       title: sample?.title || "Schedule reminder",
       calendar: sample?.calendar || "",
       rsvp: sample?.rsvp || "",
+      join: sample?.join || "",
+      meeting_id: sample?.meetingId || "",
+      passcode: sample?.passcode || "",
+      description: sample?.description || "",
       host: sample?.host || "",
     });
-    return composeScheduleSms({ title: sample?.title || "Schedule reminder", message: b, hostLine: plan?.hostLine, hostName: sample?.host, firstText: !!sample?.needsIntro });
+    return composeScheduleSms({ title: sample?.title || "Schedule reminder", message: b, protectedLines: sample?.protectedLines || [], hostLine: plan?.hostLine, hostName: sample?.host, firstText: !!sample?.needsIntro });
   }, [smsBody, sample, plan?.hostLine]);
   const hostSeg = smsSegments(plan?.hostLine || "");
   const seg = smsSegments(smsPreview);

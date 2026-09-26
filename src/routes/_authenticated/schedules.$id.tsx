@@ -27,7 +27,7 @@ import {
   runScheduleEngine,
 } from "@/lib/schedules.functions";
 import { buildRrule, describeRule, monthDayWarning, parseRepeat, WEEKDAYS, ordinal, type RepeatInput, type Weekday } from "@/lib/schedule-rrule";
-import { whenLabel, offsetLabel, DEFAULT_STEPS, MERGE_FIELDS, NUDGE_STEP, composeScheduleSms, smsSegments, renderTemplate, type StepDraft } from "@/lib/schedule-messages";
+import { whenLabel, offsetLabel, DEFAULT_STEPS, MERGE_FIELDS, NUDGE_STEP, composeScheduleSms, smsSegments, renderTemplate, meetingIdFromUrl, scheduleJoinLines, type StepDraft } from "@/lib/schedule-messages";
 import { textLinks, SAMPLE_SHORT_CODE } from "@/lib/schedule-links";
 
 /** Reminder previews count the real short link length for {rsvp} and {calendar}. */
@@ -81,6 +81,8 @@ function blank() {
     join_url: "",
     dial_in: "",
     dial_pin: "",
+    meeting_id: "",
+    meeting_passcode: "",
     location: "",
     start_local: defaultStart(),
     timezone: "America/New_York",
@@ -234,6 +236,8 @@ function DetailsForm({ initial, disabled, onSaved }: { initial: any | null; disa
         join_url: v.join_url || null,
         dial_in: v.dial_in || null,
         dial_pin: v.dial_pin || null,
+        meeting_id: v.meeting_id || null,
+        meeting_passcode: v.meeting_passcode || null,
         location: v.location || null,
         start_local: v.start_local,
         timezone: v.timezone,
@@ -281,12 +285,18 @@ function DetailsForm({ initial, disabled, onSaved }: { initial: any | null; disa
             <textarea className={field} rows={3} value={v.description ?? ""} onChange={(e) => set("description", e.target.value)} />
           </label>
           <label className="sm:col-span-3"><span className={label}>Join link (optional)</span>
-            <input className={field} value={v.join_url ?? ""} onChange={(e) => set("join_url", e.target.value)} placeholder="https://zoom.us/j/..." inputMode="url" />
+            <input className={field} value={v.join_url ?? ""} onChange={(e) => { const url = e.target.value; setV((p: any) => ({ ...p, join_url: url, meeting_id: p.meeting_id || meetingIdFromUrl(url) || "" })); }} placeholder="https://zoom.us/j/..." inputMode="url" />
+          </label>
+          <label><span className={label}>Meeting ID</span>
+            <input className={field} value={v.meeting_id ?? ""} onChange={(e) => set("meeting_id", e.target.value)} maxLength={100} />
+          </label>
+          <label><span className={label}>Passcode</span>
+            <input className={field} value={v.meeting_passcode ?? ""} onChange={(e) => set("meeting_passcode", e.target.value)} maxLength={100} />
           </label>
           <label><span className={label}>Dial-in number</span>
             <input className={field} value={v.dial_in ?? ""} onChange={(e) => set("dial_in", e.target.value)} inputMode="tel" />
           </label>
-          <label><span className={label}>PIN</span>
+          <label><span className={label}>Dial-in PIN</span>
             <input className={field} value={v.dial_pin ?? ""} onChange={(e) => set("dial_pin", e.target.value)} />
           </label>
           <label><span className={label}>Location (optional)</span>
@@ -603,7 +613,7 @@ function RemindersPanel({ data, scheduleId, steps, problems, history, people, is
               {s.channel === "email" ? <input className={field} value={s.subject ?? ""} placeholder="Subject" aria-label="Subject" onChange={(e) => up(i, { subject: e.target.value })} /> : null}
               <textarea className={field} rows={s.channel === "email" ? 5 : 2} value={s.body} aria-label="Message" onChange={(e) => up(i, { body: e.target.value })} />
               {s.channel === "sms" ? (() => {
-                const sample = composeScheduleSms({ title: data.schedule.title, message: renderTemplate(s.body, { ...PREVIEW_LINKS, first_name: "{first_name}", title: "{title}", when: "{when}", join: "{join}", description: "{description}", host: "{host}", host_name: "{host_name}", host_phone: "{host_phone}", host_email: "{host_email}", host_note: "{host_note}" }), hostName: data.schedule.host_name || "your host", firstText: true });
+                const sample = composeScheduleSms({ title: data.schedule.title, message: renderTemplate(s.body, { ...PREVIEW_LINKS, first_name: "{first_name}", title: data.schedule.title, when: "{when}", join: data.schedule.join_url || data.schedule.dial_in || data.schedule.location || "", meeting_id: data.schedule.meeting_id, passcode: data.schedule.meeting_passcode, description: data.schedule.description, host: "{host}", host_name: "{host_name}", host_phone: "{host_phone}", host_email: "{host_email}", host_note: "{host_note}" }), protectedLines: [...scheduleJoinLines(data.schedule), `RSVP: ${PREVIEW_LINKS.rsvp}`], hostName: data.schedule.host_name || "your host", firstText: true });
                 const segments = smsSegments(sample);
                 return <p className="mt-1 text-xs text-muted-foreground">Final first-text preview: {segments.chars} characters, {segments.segments} {segments.segments === 1 ? "segment" : "segments"}. It starts with the schedule name and includes Kenroe attribution and "Reply STOP to opt out."{segments.segments > 2 ? " This is a long text and may cost more to deliver." : ""}</p>;
               })() : null}

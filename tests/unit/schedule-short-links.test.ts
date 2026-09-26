@@ -7,7 +7,7 @@ import { mergeValues, finalSmsBody, scheduleEmailData } from "@/lib/schedules-en
 
 const TOKEN = "fb293bf39e7f79879003e784e9c780cbf980e11c32bae6ac";
 const person = { id: "p1", rsvp_token: TOKEN, short_code: "Kx7mQ2pRtZ", first_sms_sent_at: "2026-01-01", contact: { display_name: "Chris Kendrick" } };
-const schedule = { title: "Kendrick Family Reunion Call", timezone: "America/New_York", join_url: "https://zoom.us/j/6286719107", description: "Meeting ID: 628 671 9107\nPasscode: 121212", host_name: "Julius Kendrick", host_phone: "+15868238085" };
+const schedule = { title: "Kendrick Family Reunion Call", timezone: "America/New_York", join_url: "https://zoom.us/j/6286719107", meeting_id: "628 671 9107", meeting_passcode: "121212", description: "Meeting ID: 628 671 9107\nPasscode: 121212", host_name: "Julius Kendrick", host_phone: "+15868238085" };
 
 describe("schedule short links", () => {
   it("accepts only 10-character unambiguous codes", () => {
@@ -32,6 +32,9 @@ describe("schedule short links", () => {
     const values = mergeValues(schedule, person, new Date("2026-10-04T20:30:00Z"), "Julius Kendrick");
     const text = finalSmsBody(DEFAULT_MANUAL_SMS + " Confirm: {rsvp}.", values, person, "Julius Kendrick");
     expect(text).toContain("RSVP: https://thekenroecollective.com/a/Kx7mQ2pRtZ");
+    expect(text).toContain("Meeting ID: 628 671 9107");
+    expect(text).toContain("Passcode: 121212");
+    expect(text.match(/Meeting ID:/g)?.length).toBe(1);
     expect(text).toContain("Confirm: https://thekenroecollective.com/a/Kx7mQ2pRtZ .");
     expect(text).not.toContain(TOKEN);
     const long = composeScheduleSms({ title: schedule.title, message: renderTemplate(DEFAULT_MANUAL_SMS, { ...values, rsvp: `https://thekenroecollective.com/sc/${TOKEN}` }), hostLine: values._hostLine, firstText: false });
@@ -47,6 +50,10 @@ describe("schedule short links", () => {
     const html = await render(template.component(data as any));
     expect(html).toContain("Will you be there?");
     expect(html).toContain("Add to calendar");
+    expect(html).toContain("Join the call");
+    expect(html).toContain("Meeting ID:");
+    expect(html).toContain("628 671 9107");
+    expect(html).toContain("Passcode:");
     expect(html).not.toContain(EMAIL_RSVP_MARK);
     expect(html).toContain(`href="https://thekenroecollective.com/sc/${TOKEN}"`);
     expect(html.match(/Will you be there\?/g)!.length).toBe(2);

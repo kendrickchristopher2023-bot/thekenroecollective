@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { composeScheduleSms, DEFAULT_MANUAL_SMS, normalizeJoinUrl, renderTemplate, smsSegments } from "@/lib/schedule-messages";
+import { composeScheduleSms, DEFAULT_MANUAL_SMS, meetingIdFromUrl, normalizeJoinUrl, renderTemplate, smsSegments } from "@/lib/schedule-messages";
 
 describe("schedule message presentation", () => {
   it("leads first texts with Reminder, the schedule and keeps attribution and STOP on separate lines", () => {
@@ -82,6 +82,15 @@ describe("schedule message presentation", () => {
 });
 
 describe("schedule join-link normalization", () => {
+  it.each([
+    ["https://us05web.zoom.us/j/6286719107?pwd=secret", "628 671 9107"],
+    ["https://meet.google.com/abc-defg-hij", "abc-defg-hij"],
+    ["https://teams.microsoft.com/l/meetup-join/19%3ameeting_example", "19:meeting_example"],
+  ])("extracts the public meeting ID from %s", (input, expected) => expect(meetingIdFromUrl(input)).toBe(expected));
+
+  it("never treats Zoom's pwd parameter as a passcode", () => {
+    expect(meetingIdFromUrl("https://zoom.us/j/6286719107?pwd=private")).toBe("628 671 9107");
+  });
   it.each([
     ["www.zoom.com/j/123", "https://www.zoom.com/j/123"],
     ["zoom.us/j/123", "https://zoom.us/j/123"],

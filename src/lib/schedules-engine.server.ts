@@ -741,7 +741,7 @@ export async function manualSendPreview(admin: Admin, userClient: any, userId: s
     entitled: info.entitled,
     capLeft: info.isOwner ? null : Math.max(0, DAILY_SMS_CAP - (owners.smsToday.get(s.owner_user_id) ?? 0)),
     timezone: s.timezone,
-    samplePerson: first ? { firstName: firstName(first.contact?.display_name), needsIntro: !first.first_sms_sent_at, host: s.host_name || info.host, title: s.title, ...textLinks(first) } : null,
+    samplePerson: first ? { firstName: firstName(first.contact?.display_name), needsIntro: !first.first_sms_sent_at, host: s.host_name || info.host, title: s.title, join: safeJoinValue(s), meetingId: s.meeting_id || "", passcode: s.meeting_passcode || "", description: s.description || "", protectedLines: [...scheduleJoinLines(s), `RSVP: ${textLinks(first).rsvp}`], ...textLinks(first) } : null,
     hostLine: hostSmsLine(hostFromSchedule(s)),
     declinedCount: declined.size,
   };
