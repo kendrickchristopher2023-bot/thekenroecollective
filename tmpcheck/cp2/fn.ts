@@ -6,6 +6,6 @@ export async function call(who: string, name: string, data: any, method = "POST"
   const h: any = { authorization: `Bearer ${S[who].access_token}`, "content-type": "application/json", "x-tsr-serverFn": "true" };
   const pl = JSON.stringify(await toJSONAsync({ data }));
   const r = method === "GET" ? await fetch(`${u}?payload=${encodeURIComponent(pl)}`, { headers: h }) : await fetch(u, { method, headers: h, body: pl });
-  const t = await r.text(); return { status: r.status, body: t.slice(0, 300) };
+  const t = await r.text(); return { status: r.status, body: t.slice(0, 20000) };
 }
 if (import.meta.main) console.log(await call("owner", "getSchedule", { id: st.A }, process.argv[2] ?? "POST"));
