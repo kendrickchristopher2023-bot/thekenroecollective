@@ -66,7 +66,7 @@ function SchedulesPage() {
 
         {error ? <p className="mt-8 rounded-2xl bg-destructive/10 p-4 text-sm text-destructive">{error}</p> : null}
 
-        {canUse === false ? (
+        {canUse === false && !(rows?.length && rows.every((r) => r.role && r.role !== "owner")) ? (
           <div className="mt-8 rounded-3xl bg-card p-8 ring-1 ring-ink/5">
             <h2 className="font-serif text-xl">Schedules is included with Host and Atelier plans</h2>
             <p className="mt-2 text-sm text-muted-foreground">
@@ -97,7 +97,7 @@ function SchedulesPage() {
                 <Link to="/schedules/$id" params={{ id: r.id }} className="block h-full rounded-3xl bg-card p-6 ring-1 ring-ink/5 transition hover:ring-velvet/30">
                   <div className="flex items-start justify-between gap-3">
                     <h2 className="font-serif text-lg leading-snug">{r.title}</h2>
-                    <StatusPill status={r.status} paused={canUse === false} />
+                    {r.role && r.role !== "owner" ? <span className="shrink-0 rounded-full bg-secondary px-2.5 py-0.5 text-xs">Shared with you</span> : <StatusPill status={r.status} paused={canUse === false} />}
                   </div>
                   <p className="mt-1 text-sm text-muted-foreground">{describeRule(r.rrule)}</p>
                   <p className="mt-4 text-sm">

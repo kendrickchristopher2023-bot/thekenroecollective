@@ -553,6 +553,7 @@ const PROBLEM_LABEL: Record<string, string> = {
   no_longer_scheduled: "Not sent: the date or person was removed",
   before_welcome: "Skipped: before your welcome message",
   cannot_attend: "Skipped: said they cannot attend",
+  already_answered: "Skipped: already answered",
 };
 
 const HISTORY_STATUS: Record<string, string> = {
@@ -640,7 +641,7 @@ function RemindersPanel({ data, scheduleId, steps, problems, history, people, is
               <li key={h.id} className="flex flex-col gap-1 py-2 sm:flex-row sm:justify-between sm:gap-4">
                 <span className="min-w-0">
                   <span className="font-medium">{names.get(h.person_id) ?? "Someone"}</span>, {h.channel === "sms" ? "text" : "email"}
-                  <span className="text-muted-foreground"> · {h.kind === "manual" ? "Sent now" : h.kind === "welcome" ? "Welcome" : "Automatic"} · {new Date(h.sent_at ?? h.created_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span>
+                  <span className="text-muted-foreground"> · {h.kind === "manual" ? "Sent now" : h.kind === "welcome" ? "Welcome" : h.kind === "reply" ? "Reply to their text" : "Automatic"} · {new Date(h.sent_at ?? h.created_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span>
                 </span>
                 <span className="text-muted-foreground">{HISTORY_STATUS[h.status] ?? PROBLEM_LABEL[h.error] ?? (SKIP_LABEL[h.error] ? `Not sent: ${SKIP_LABEL[h.error]}` : `Not sent: ${h.error ?? h.status}`)}</span>
               </li>
