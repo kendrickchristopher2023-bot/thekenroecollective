@@ -692,7 +692,8 @@ export const listMyContacts = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const sb = context.supabase as any;
     const [{ data: contacts }, { data: groups }, { data: members }] = await Promise.all([
-      sb.from("contacts").select("id,display_name,email,phone").is("merged_into", null).order("display_name").limit(2000),
+      // Only your own contacts. Co-hosts can read people on shared schedules, but those are not theirs to reuse.
+      sb.from("contacts").select("id,display_name,email,phone").eq("owner_user_id", context.userId).is("merged_into", null).order("display_name").limit(2000),
       sb.from("contact_groups").select("id,name").order("name"),
       sb.from("contact_group_members").select("group_id"),
     ]);
