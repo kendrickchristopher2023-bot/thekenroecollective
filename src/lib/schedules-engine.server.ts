@@ -24,6 +24,7 @@ import {
   DEFAULT_MANUAL_SMS,
   scheduleJoinDetails,
   scheduleJoinLines,
+  withoutProtectedLines,
 } from "@/lib/schedule-messages";
 import { phoneKeys, canonicalPhone } from "@/lib/phone-keys";
 import { eventInstant, eventTimeZone } from "@/lib/datetime";
@@ -220,12 +221,7 @@ export function finalSmsBody(template: string, values: ReturnType<typeof mergeVa
     ...values._joinLines,
     values.rsvp ? `RSVP: ${values.rsvp}` : "",
   ].filter(Boolean);
-  let freeText = rendered;
-  for (const line of required) {
-    const value = line.slice(line.indexOf(":") + 1).trim();
-    freeText = freeText.includes(line) ? freeText.replace(line, "") : freeText.replace(value, "");
-  }
-  freeText = freeText.replace(/(^|\n)\s*(Join(?: meeting)?|RSVP|Meeting ID|Passcode):\s*(?=\n|$)/gi, "$1").replace(/\n{3,}/g, "\n\n").trim();
+  const freeText = withoutProtectedLines(rendered, required);
   return composeScheduleSms({
     title: values.title,
     message: freeText,

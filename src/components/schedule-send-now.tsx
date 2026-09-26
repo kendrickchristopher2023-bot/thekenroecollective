@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { X } from "lucide-react";
 import { previewSendNow, sendNow } from "@/lib/schedules.functions";
-import { smsSegments, composeScheduleSms, renderTemplate } from "@/lib/schedule-messages";
+import { smsSegments, composeScheduleSms, renderTemplate, withoutProtectedLines } from "@/lib/schedule-messages";
 import { toUserMessage } from "@/lib/user-error";
 
 type Channel = "email" | "sms" | "both";
@@ -119,7 +119,7 @@ function SendNowPanel({ scheduleId, people, onClose }: { scheduleId: string; peo
       description: sample?.description || "",
       host: sample?.host || "",
     });
-    return composeScheduleSms({ title: sample?.title || "Schedule reminder", message: b, protectedLines: sample?.protectedLines || [], hostLine: plan?.hostLine, hostName: sample?.host, firstText: !!sample?.needsIntro });
+    return composeScheduleSms({ title: sample?.title || "Schedule reminder", message: withoutProtectedLines(b, sample?.protectedLines || []), protectedLines: sample?.protectedLines || [], hostLine: plan?.hostLine, hostName: sample?.host, firstText: !!sample?.needsIntro });
   }, [smsBody, sample, plan?.hostLine]);
   const hostSeg = smsSegments(plan?.hostLine || "");
   const seg = smsSegments(smsPreview);

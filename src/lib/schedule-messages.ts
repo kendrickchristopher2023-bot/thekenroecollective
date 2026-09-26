@@ -146,6 +146,16 @@ export function withoutMeetingCredentialLines(value: string | null | undefined):
   return String(value || "").split("\n").filter((line) => !/^\s*(meeting id|passcode)\s*:/i.test(line)).join("\n").trim();
 }
 
+/** Removes protected values from editable copy so they can be appended once, intact. */
+export function withoutProtectedLines(rendered: string, protectedLines: string[]): string {
+  let freeText = rendered;
+  for (const line of protectedLines) {
+    const value = line.slice(line.indexOf(":") + 1).trim();
+    freeText = freeText.includes(line) ? freeText.replace(line, "") : freeText.replace(value, "");
+  }
+  return freeText.replace(/(^|\n)\s*(Join(?: meeting)?|RSVP|Meeting ID|Passcode):\s*(?=\n|$)/gi, "$1").replace(/\n{3,}/g, "\n\n").trim();
+}
+
 export interface HostDetails {
   name?: string | null;
   phone?: string | null;

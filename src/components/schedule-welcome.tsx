@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { getWelcome, saveWelcome } from "@/lib/schedules.functions";
 import { textLinks, SAMPLE_SHORT_CODE } from "@/lib/schedule-links";
-import { renderTemplate, firstName, whenLabel, smsSegments, composeScheduleSms, MERGE_FIELDS, hostSmsLine, hostFromSchedule, scheduleJoinLines } from "@/lib/schedule-messages";
+import { renderTemplate, firstName, whenLabel, smsSegments, composeScheduleSms, MERGE_FIELDS, hostSmsLine, hostFromSchedule, scheduleJoinLines, withoutProtectedLines } from "@/lib/schedule-messages";
 import { SKIP_LABEL } from "@/components/schedule-send-now";
 import { toUserMessage } from "@/lib/user-error";
 import { eventInstant } from "@/lib/datetime";
@@ -90,7 +90,8 @@ export function WelcomeSection({ schedule, people, occurrences, onChange }: { sc
     host: "",
   };
   const hostLine = hostSmsLine(hostFromSchedule(schedule));
-  const smsText = composeScheduleSms({ title: schedule.title, message: renderTemplate(body, values), protectedLines: [...scheduleJoinLines(schedule), `RSVP: ${values.rsvp}`], hostLine, hostName: schedule.host_name || "[your name]", firstText: !!sample && !sample.first_sms_sent_at, leadLabel: null });
+  const protectedLines = [...scheduleJoinLines(schedule), `RSVP: ${values.rsvp}`];
+  const smsText = composeScheduleSms({ title: schedule.title, message: withoutProtectedLines(renderTemplate(body, values), protectedLines), protectedLines, hostLine, hostName: schedule.host_name || "[your name]", firstText: !!sample && !sample.first_sms_sent_at, leadLabel: null });
   const seg = smsSegments(smsText);
 
   if (!w) return <section className="rounded-3xl bg-card p-6 ring-1 ring-ink/5 sm:p-8"><h2 className="font-serif text-xl">Welcome message</h2><p className="mt-2 text-sm text-muted-foreground">Loading...</p></section>;
