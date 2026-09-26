@@ -14,7 +14,7 @@ export interface StepDraft {
   audience?: "all" | "no_answer";
 }
 
-export const MERGE_FIELDS = ["first_name", "title", "when", "join", "calendar", "rsvp", "host", "host_name", "host_phone", "host_email", "host_note"] as const;
+export const MERGE_FIELDS = ["first_name", "title", "when", "join", "description", "calendar", "rsvp", "host", "host_name", "host_phone", "host_email", "host_note"] as const;
 
 export const DEFAULT_STEPS: StepDraft[] = [
   {
@@ -59,6 +59,7 @@ export interface MergeValues {
   title?: string | null;
   when?: string | null;
   join?: string | null;
+  description?: string | null;
   calendar?: string | null;
   rsvp?: string | null;
   host?: string | null;
@@ -74,6 +75,7 @@ export function renderTemplate(tpl: string, v: MergeValues): string {
     title: (v.title || "Our call").trim(),
     when: (v.when || "").trim(),
     join: (v.join || "see the invitation").trim(),
+    description: (v.description || "").trim(),
     calendar: (v.calendar || "").trim(),
     rsvp: (v.rsvp || "").trim(),
     host: (v.host || "").trim(),
@@ -82,7 +84,7 @@ export function renderTemplate(tpl: string, v: MergeValues): string {
     host_email: (v.host_email || "").trim(),
     host_note: (v.host_note || "").trim(),
   };
-  return tpl.replace(/\{(first_name|title|when|join|calendar|rsvp|host_name|host_phone|host_email|host_note|host)\}/g, (_m, k: string) => map[k] ?? _m);
+  return tpl.replace(/\{(first_name|title|when|join|description|calendar|rsvp|host_name|host_phone|host_email|host_note|host)\}/g, (_m, k: string) => map[k] ?? _m);
 }
 
 export interface HostDetails {
@@ -166,9 +168,44 @@ export function quietHoursSendAt(due: Date, startsAt: Date, timezone: string): D
 export const DAILY_SMS_CAP = 200;
 
 export function complianceIntro(hostName: string): string {
-  return `Kenroe reminders from ${hostName || "your host"}: `;
+  return `Sent with The Kenroe Collective for ${hostName || "your host"}.`;
 }
-export const STOP_LINE = " Reply STOP to opt out.";
+export const STOP_LINE = "Reply STOP to opt out.";
+
+/** Event-first SMS wrapper shared by previews and the actual sender. */
+export function composeScheduleSms(args: {
+  title: string;
+  message: string;
+  hostLine?: string;
+  hostName?: string;
+  firstText?: boolean;
+  maxChars?: number;
+}): string {
+  const title = args.title.trim() || "Schedule reminder";
+  const message = args.message.trim();
+  const startsWithTitle = message.toLocaleLowerCase().startsWith(title.toLocaleLowerCase());
+  const lead = startsWithTitle ? message : `${title}\n${message}`;
+  const tail = [args.hostLine?.trim(), args.firstText ? complianceIntro(args.hostName || "your host") : "", args.firstText ? STOP_LINE : ""]
+    .filter(Boolean)
+    .join("\n");
+  const maxChars = args.maxChars ?? 480;
+  const room = Math.max(40, maxChars - (tail ? tail.length + 2 : 0));
+  const body = [...lead].slice(0, room).join("").trimEnd();
+  return tail ? `${body}\n\n${tail}` : body;
+}
+
+/** Converts common web addresses to safe absolute links and rejects unsafe schemes. */
+export function normalizeJoinUrl(value: string | null | undefined): string | null {
+  const raw = String(value ?? "").trim();
+  if (!raw) return null;
+  const candidate = /^[a-z][a-z0-9+.-]*:/i.test(raw) ? raw : `https://${raw}`;
+  let parsed: URL;
+  try { parsed = new URL(candidate); } catch { throw new Error("Enter a complete meeting link, such as https://zoom.us/j/123."); }
+  if (!['http:', 'https:'].includes(parsed.protocol) || !parsed.hostname.includes(".")) {
+    throw new Error("Enter a secure web link that starts with https://.");
+  }
+  return parsed.toString();
+}
 
 const GSM = /^[A-Za-z0-9 @£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ!"#¤%&'()*+,\-./:;<=>?¡ÄÖÑÜ§¿äöñüà^{}\\[~\]|€]*$/;
 

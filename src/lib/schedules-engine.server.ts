@@ -17,6 +17,7 @@ import {
   DAILY_SMS_CAP,
   complianceIntro,
   STOP_LINE,
+  composeScheduleSms,
   inQuietHours,
   DEFAULT_STEPS,
   hostFromSchedule,
@@ -195,6 +196,7 @@ export function mergeValues(s: any, person: any, startsAt: Date, host: string) {
     title: s.title,
     when: whenLabel(startsAt, s.timezone),
     join: s.join_url || [s.dial_in, s.dial_pin ? `PIN ${s.dial_pin}` : ""].filter(Boolean).join(" ") || s.location,
+    description: s.description,
     calendar: calendarLink(person.rsvp_token),
     rsvp: personPageLink(person.rsvp_token),
     host,
@@ -208,10 +210,13 @@ export function mergeValues(s: any, person: any, startsAt: Date, host: string) {
 
 /** The exact text a person receives: first-text intro, message, host line, STOP line. */
 export function finalSmsBody(template: string, values: ReturnType<typeof mergeValues>, person: any, host: string) {
-  const intro = person.first_sms_sent_at ? "" : complianceIntro(host);
-  const tail = (values._hostLine || "") + (person.first_sms_sent_at ? "" : STOP_LINE);
-  const room = Math.max(40, 480 - intro.length - tail.length);
-  return intro + renderTemplate(template, values).slice(0, room) + tail;
+  return composeScheduleSms({
+    title: values.title,
+    message: renderTemplate(template, values),
+    hostLine: values._hostLine,
+    hostName: host,
+    firstText: !person.first_sms_sent_at,
+  });
 }
 
 /** Everything the email template gets: message, calendar button, RSVP link and the host contact block. */
@@ -589,13 +594,14 @@ export function prefill(tpl: string, s: any, startsAt: Date, host: string): stri
     title: s.title || "Our call",
     when: whenLabel(startsAt, s.timezone),
     join: s.join_url || [s.dial_in, s.dial_pin ? `PIN ${s.dial_pin}` : ""].filter(Boolean).join(" ") || s.location || "see the invitation",
+    description: s.description || "",
     host,
     host_name: s.host_name || host,
     host_phone: s.host_phone ? prettyPhone(s.host_phone) : "",
     host_email: s.host_email || "",
     host_note: s.host_note || "",
   };
-  return tpl.replace(/\{(title|when|join|host_name|host_phone|host_email|host_note|host)\}/g, (_m, k: string) => map[k] ?? _m);
+  return tpl.replace(/\{(title|when|join|description|host_name|host_phone|host_email|host_note|host)\}/g, (_m, k: string) => map[k] ?? _m);
 }
 
 /** The step for this date whose send time is closest to now, per channel. */
@@ -706,7 +712,7 @@ export async function manualSendPreview(admin: Admin, userClient: any, userId: s
     entitled: info.entitled,
     capLeft: info.isOwner ? null : Math.max(0, DAILY_SMS_CAP - (owners.smsToday.get(s.owner_user_id) ?? 0)),
     timezone: s.timezone,
-    samplePerson: first ? { firstName: firstName(first.contact?.display_name), needsIntro: !first.first_sms_sent_at, host: s.host_name || info.host, calendar: calendarLink(first.rsvp_token), rsvp: personPageLink(first.rsvp_token) } : null,
+    samplePerson: first ? { firstName: firstName(first.contact?.display_name), needsIntro: !first.first_sms_sent_at, host: s.host_name || info.host, title: s.title, calendar: calendarLink(first.rsvp_token), rsvp: personPageLink(first.rsvp_token) } : null,
     hostLine: hostSmsLine(hostFromSchedule(s)),
     declinedCount: declined.size,
   };

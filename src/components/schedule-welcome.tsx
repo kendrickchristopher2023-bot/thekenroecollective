@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { getWelcome, saveWelcome } from "@/lib/schedules.functions";
-import { renderTemplate, firstName, whenLabel, smsSegments, complianceIntro, STOP_LINE, MERGE_FIELDS, hostSmsLine, hostFromSchedule } from "@/lib/schedule-messages";
+import { renderTemplate, firstName, whenLabel, smsSegments, composeScheduleSms, MERGE_FIELDS, hostSmsLine, hostFromSchedule } from "@/lib/schedule-messages";
 import { SKIP_LABEL } from "@/components/schedule-send-now";
 import { toUserMessage } from "@/lib/user-error";
 import { eventInstant } from "@/lib/datetime";
@@ -81,11 +81,12 @@ export function WelcomeSection({ schedule, people, occurrences, onChange }: { sc
     title: schedule.title,
     when: nextOcc ? whenLabel(new Date(nextOcc.starts_at), tz) : "",
     join: schedule.join_url || schedule.dial_in || schedule.location || "",
+    description: schedule.description || "",
     calendar: "https://thekenroecollective.com/api/public/schedule-calendar/...",
     host: "",
   };
   const hostLine = hostSmsLine(hostFromSchedule(schedule));
-  const smsText = (sample && !sample.first_sms_sent_at ? complianceIntro(schedule.host_name || "[your name]") : "") + renderTemplate(body, values) + hostLine + (sample && !sample.first_sms_sent_at ? STOP_LINE : "");
+  const smsText = composeScheduleSms({ title: schedule.title, message: renderTemplate(body, values), hostLine, hostName: schedule.host_name || "[your name]", firstText: !!sample && !sample.first_sms_sent_at });
   const seg = smsSegments(smsText);
 
   if (!w) return <section className="rounded-3xl bg-card p-6 ring-1 ring-ink/5 sm:p-8"><h2 className="font-serif text-xl">Welcome message</h2><p className="mt-2 text-sm text-muted-foreground">Loading...</p></section>;
@@ -171,7 +172,7 @@ export function WelcomeSection({ schedule, people, occurrences, onChange }: { sc
             <div className="rounded-2xl p-4 ring-1 ring-ink/10">
               <p className={label}>Text preview{sample ? ` for ${values.first_name}` : ""}</p>
               <p className="mt-2 whitespace-pre-wrap break-words text-sm">{smsText}</p>
-              <p className="mt-2 text-xs text-muted-foreground">{seg.chars} characters, {seg.segments} {seg.segments === 1 ? "text" : "texts"}{seg.unicode ? " (special characters use shorter texts)" : ""}. The first text to each person says it is from you and "Reply STOP to opt out."</p>
+              <p className="mt-2 text-xs text-muted-foreground">{seg.chars} characters, {seg.segments} {seg.segments === 1 ? "text segment" : "text segments"}{seg.unicode ? " (special characters use shorter segments)" : ""}. The first text includes The Kenroe Collective attribution, your name, and "Reply STOP to opt out."{seg.segments > 2 ? " This is a long text and may cost more to deliver." : ""}</p>
             </div>
           ) : null}
           <label className="flex items-center gap-2 text-sm">

@@ -3,7 +3,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { X } from "lucide-react";
 import { previewSendNow, sendNow } from "@/lib/schedules.functions";
-import { smsSegments, complianceIntro, STOP_LINE } from "@/lib/schedule-messages";
+import { smsSegments, composeScheduleSms } from "@/lib/schedule-messages";
 import { toUserMessage } from "@/lib/user-error";
 
 type Channel = "email" | "sms" | "both";
@@ -109,9 +109,7 @@ function SendNowPanel({ scheduleId, people, onClose }: { scheduleId: string; peo
   const sample = plan?.samplePerson;
   const smsPreview = useMemo(() => {
     let b = smsBody.replace(/\{first_name\}/g, sample?.firstName || "there").replace(/\{calendar\}/g, sample?.calendar || "").replace(/\{rsvp\}/g, sample?.rsvp || "");
-    b += plan?.hostLine || "";
-    if (sample?.needsIntro) b = complianceIntro(sample.host) + b + STOP_LINE;
-    return b.slice(0, 480);
+    return composeScheduleSms({ title: sample?.title || "Schedule reminder", message: b, hostLine: plan?.hostLine, hostName: sample?.host, firstText: !!sample?.needsIntro });
   }, [smsBody, sample, plan?.hostLine]);
   const hostSeg = smsSegments(plan?.hostLine || "");
   const seg = smsSegments(smsPreview);
@@ -235,7 +233,8 @@ function SendNowPanel({ scheduleId, people, onClose }: { scheduleId: string; peo
                   <p className="mt-1 text-xs text-muted-foreground">
                     {seg.chars} characters, {plural(seg.segments, "text segment")}{seg.unicode ? " (emoji or special characters use shorter segments)" : ""}.
                     {plan?.hostLine ? ` Includes your contact line (${hostSeg.chars} characters).` : ""}
-                    {sample?.needsIntro ? " A first text also says it is from you and how to reply STOP." : ""}
+                    {sample?.needsIntro ? " A first text also includes The Kenroe Collective attribution, your name, and how to reply STOP." : ""}
+                    {seg.segments > 2 ? " This is a long text and may cost more to deliver." : ""}
                   </p>
                   {plan.quiet ? (
                     <div className="mt-3 rounded-2xl bg-amber-100 p-3 text-sm text-amber-900">
