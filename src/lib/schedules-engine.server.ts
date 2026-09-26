@@ -212,6 +212,24 @@ export function finalSmsBody(template: string, values: ReturnType<typeof mergeVa
   return intro + renderTemplate(template, values).slice(0, room) + tail;
 }
 
+/** Everything the email template gets: message, calendar button, RSVP link and the host contact block. */
+export function scheduleEmailData(s: any, person: any, values: ReturnType<typeof mergeValues>, subject: string | null, body: string, host: string) {
+  const h = hostFromSchedule(s);
+  return {
+    subject: renderTemplate(subject || "Reminder: {title}", values),
+    body: renderTemplate(body, values),
+    senderName: host,
+    ctaUrl: calendarLink(person.rsvp_token),
+    ctaLabel: "Add to calendar",
+    rsvpUrl: personPageLink(person.rsvp_token),
+    hostName: h ? h.name || host : null,
+    hostPhone: h?.phone || null,
+    hostPhoneLabel: h?.phone ? prettyPhone(h.phone) : null,
+    hostEmail: h?.email || null,
+    hostNote: h?.note || null,
+  };
+}
+
 /**
  * Runs the guards for a row this caller already claimed, then hands it to the
  * existing pipes. Returns the final status written to the row.
@@ -258,13 +276,7 @@ export async function deliverClaimed(args: {
       idempotencyKey: `sched-${sendId}`,
       label: "schedule_reminder",
       fromName: info.host,
-      templateData: {
-        subject: renderTemplate(args.subject || "Reminder: {title}", values),
-        body: renderTemplate(args.body, values),
-        senderName: info.host,
-        ctaUrl: calendarLink(person.rsvp_token),
-        ctaLabel: "Add to calendar",
-      },
+      templateData: scheduleEmailData(s, person, values, args.subject, args.body, info.host),
     });
     if (r.ok) {
       const status = r.reason === "demo" ? "blocked" : "sent";
