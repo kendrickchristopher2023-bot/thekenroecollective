@@ -47,6 +47,7 @@ import { Route as WishesEventIdRouteImport } from './routes/wishes.$eventId'
 import { Route as VendorsSlugRouteImport } from './routes/vendors.$slug'
 import { Route as ThanksTokenRouteImport } from './routes/thanks.$token'
 import { Route as SoundTokenRouteImport } from './routes/sound.$token'
+import { Route as ScTokenRouteImport } from './routes/sc.$token'
 import { Route as STokenRouteImport } from './routes/s.$token'
 import { Route as RfqBidTokenRouteImport } from './routes/rfq-bid.$token'
 import { Route as RSlugRouteImport } from './routes/r.$slug'
@@ -329,6 +330,11 @@ const ThanksTokenRoute = ThanksTokenRouteImport.update({
 const SoundTokenRoute = SoundTokenRouteImport.update({
   id: '/sound/$token',
   path: '/sound/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ScTokenRoute = ScTokenRouteImport.update({
+  id: '/sc/$token',
+  path: '/sc/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const STokenRoute = STokenRouteImport.update({
@@ -913,6 +919,7 @@ export interface FileRoutesByFullPath {
   '/r/$slug': typeof RSlugRoute
   '/rfq-bid/$token': typeof RfqBidTokenRoute
   '/s/$token': typeof STokenRoute
+  '/sc/$token': typeof ScTokenRoute
   '/sound/$token': typeof SoundTokenRoute
   '/thanks/$token': typeof ThanksTokenRoute
   '/vendors/$slug': typeof VendorsSlugRoute
@@ -1045,6 +1052,7 @@ export interface FileRoutesByTo {
   '/r/$slug': typeof RSlugRoute
   '/rfq-bid/$token': typeof RfqBidTokenRoute
   '/s/$token': typeof STokenRoute
+  '/sc/$token': typeof ScTokenRoute
   '/sound/$token': typeof SoundTokenRoute
   '/thanks/$token': typeof ThanksTokenRoute
   '/vendors/$slug': typeof VendorsSlugRoute
@@ -1180,6 +1188,7 @@ export interface FileRoutesById {
   '/r/$slug': typeof RSlugRoute
   '/rfq-bid/$token': typeof RfqBidTokenRoute
   '/s/$token': typeof STokenRoute
+  '/sc/$token': typeof ScTokenRoute
   '/sound/$token': typeof SoundTokenRoute
   '/thanks/$token': typeof ThanksTokenRoute
   '/vendors/$slug': typeof VendorsSlugRoute
@@ -1315,6 +1324,7 @@ export interface FileRouteTypes {
     | '/r/$slug'
     | '/rfq-bid/$token'
     | '/s/$token'
+    | '/sc/$token'
     | '/sound/$token'
     | '/thanks/$token'
     | '/vendors/$slug'
@@ -1447,6 +1457,7 @@ export interface FileRouteTypes {
     | '/r/$slug'
     | '/rfq-bid/$token'
     | '/s/$token'
+    | '/sc/$token'
     | '/sound/$token'
     | '/thanks/$token'
     | '/vendors/$slug'
@@ -1581,6 +1592,7 @@ export interface FileRouteTypes {
     | '/r/$slug'
     | '/rfq-bid/$token'
     | '/s/$token'
+    | '/sc/$token'
     | '/sound/$token'
     | '/thanks/$token'
     | '/vendors/$slug'
@@ -1703,6 +1715,7 @@ export interface RootRouteChildren {
   RSlugRoute: typeof RSlugRoute
   RfqBidTokenRoute: typeof RfqBidTokenRoute
   STokenRoute: typeof STokenRoute
+  ScTokenRoute: typeof ScTokenRoute
   SoundTokenRoute: typeof SoundTokenRoute
   ThanksTokenRoute: typeof ThanksTokenRoute
   VendorsSlugRoute: typeof VendorsSlugRoute
@@ -2024,6 +2037,13 @@ declare module '@tanstack/react-router' {
       path: '/sound/$token'
       fullPath: '/sound/$token'
       preLoaderRoute: typeof SoundTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sc/$token': {
+      id: '/sc/$token'
+      path: '/sc/$token'
+      fullPath: '/sc/$token'
+      preLoaderRoute: typeof ScTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/s/$token': {
@@ -2824,6 +2844,7 @@ const rootRouteChildren: RootRouteChildren = {
   RSlugRoute: RSlugRoute,
   RfqBidTokenRoute: RfqBidTokenRoute,
   STokenRoute: STokenRoute,
+  ScTokenRoute: ScTokenRoute,
   SoundTokenRoute: SoundTokenRoute,
   ThanksTokenRoute: ThanksTokenRoute,
   VendorsSlugRoute: VendorsSlugRoute,
