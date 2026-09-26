@@ -15,8 +15,6 @@ import {
   whenLabel,
   quietHoursSendAt,
   DAILY_SMS_CAP,
-  complianceIntro,
-  STOP_LINE,
   composeScheduleSms,
   inQuietHours,
   DEFAULT_STEPS,
