@@ -27,7 +27,11 @@ import {
   runScheduleEngine,
 } from "@/lib/schedules.functions";
 import { buildRrule, describeRule, monthDayWarning, parseRepeat, WEEKDAYS, ordinal, type RepeatInput, type Weekday } from "@/lib/schedule-rrule";
-import { whenLabel, offsetLabel, DEFAULT_STEPS, MERGE_FIELDS, NUDGE_STEP, composeScheduleSms, smsSegments, type StepDraft } from "@/lib/schedule-messages";
+import { whenLabel, offsetLabel, DEFAULT_STEPS, MERGE_FIELDS, NUDGE_STEP, composeScheduleSms, smsSegments, renderTemplate, type StepDraft } from "@/lib/schedule-messages";
+import { textLinks, SAMPLE_SHORT_CODE } from "@/lib/schedule-links";
+
+/** Reminder previews count the real short link length for {rsvp} and {calendar}. */
+const PREVIEW_LINKS = textLinks({ rsvp_token: "", short_code: SAMPLE_SHORT_CODE });
 import { toUserMessage } from "@/lib/user-error";
 import { confirmDialog } from "@/lib/confirm-dialog";
 
@@ -599,7 +603,7 @@ function RemindersPanel({ data, scheduleId, steps, problems, history, people, is
               {s.channel === "email" ? <input className={field} value={s.subject ?? ""} placeholder="Subject" aria-label="Subject" onChange={(e) => up(i, { subject: e.target.value })} /> : null}
               <textarea className={field} rows={s.channel === "email" ? 5 : 2} value={s.body} aria-label="Message" onChange={(e) => up(i, { body: e.target.value })} />
               {s.channel === "sms" ? (() => {
-                const sample = composeScheduleSms({ title: data.schedule.title, message: s.body, hostName: data.schedule.host_name || "your host", firstText: true });
+                const sample = composeScheduleSms({ title: data.schedule.title, message: renderTemplate(s.body, { ...PREVIEW_LINKS, first_name: "{first_name}", title: "{title}", when: "{when}", join: "{join}", description: "{description}", host: "{host}", host_name: "{host_name}", host_phone: "{host_phone}", host_email: "{host_email}", host_note: "{host_note}" }), hostName: data.schedule.host_name || "your host", firstText: true });
                 const segments = smsSegments(sample);
                 return <p className="mt-1 text-xs text-muted-foreground">Final first-text preview: {segments.chars} characters, {segments.segments} {segments.segments === 1 ? "segment" : "segments"}. It starts with the schedule name and includes Kenroe attribution and "Reply STOP to opt out."{segments.segments > 2 ? " This is a long text and may cost more to deliver." : ""}</p>;
               })() : null}

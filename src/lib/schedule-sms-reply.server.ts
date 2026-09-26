@@ -119,7 +119,7 @@ export async function handleScheduleReply(admin: Admin, from: string, answer: An
   const top = r.hits[0]!;
   const s = top.schedule;
   const person = top.person;
-  const link = engine.personPageLink(person.rsvp_token);
+  const link = engine.textLinks(person).rsvp;
 
   const { data: nextOcc } = await admin
     .from("schedule_occurrences")
@@ -137,7 +137,7 @@ export async function handleScheduleReply(admin: Admin, from: string, answer: An
   if (r.route === "ambiguous") {
     const second = r.hits[1];
     body = second
-      ? `Thanks. You are on more than one list, so we did not save that. ${s.title}: ${link} ${second.schedule.title}: ${engine.personPageLink(second.person.rsvp_token)}`
+      ? `Thanks. You are on more than one list, so we did not save that. ${s.title}: ${link} ${second.schedule.title}: ${engine.textLinks(second.person).rsvp}`
       : `Thanks. We texted you about more than one thing, so we did not save that. To answer for ${s.title}, tap ${link}`;
   } else if (!occ) {
     route = "no_date";

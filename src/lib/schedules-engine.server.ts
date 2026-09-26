@@ -27,19 +27,14 @@ import {
 import { phoneKeys, canonicalPhone } from "@/lib/phone-keys";
 import { eventInstant, eventTimeZone } from "@/lib/datetime";
 
-export const SCHEDULE_SITE_ORIGIN = "https://thekenroecollective.com";
+import { SCHEDULE_SITE_ORIGIN, calendarLink, personPageLink, textLinks, EMAIL_RSVP_MARK, spaceLinkPunctuation } from "@/lib/schedule-links";
+export { SCHEDULE_SITE_ORIGIN, calendarLink, personPageLink, textLinks };
 const HORIZON_DAYS = 90;
 const LATE_WINDOW_MS = 30 * 60_000;
 const MAX_LEAD_MS = 31 * 86_400_000;
 
 type Admin = SupabaseClient<any, any, any>;
 
-export function calendarLink(token: string): string {
-  return `${SCHEDULE_SITE_ORIGIN}/api/public/schedule-calendar/${token}`;
-}
-export function personPageLink(token: string): string {
-  return `${SCHEDULE_SITE_ORIGIN}/sc/${token}`;
-}
 
 /** Make legacy host-entered links tappable without letting one bad saved value break a send. */
 export function safeJoinValue(s: any): string {
@@ -205,8 +200,8 @@ export function mergeValues(s: any, person: any, startsAt: Date, host: string) {
     when: whenLabel(startsAt, s.timezone),
     join: safeJoinValue(s),
     description: s.description,
-    calendar: calendarLink(person.rsvp_token),
-    rsvp: personPageLink(person.rsvp_token),
+    // Texts get the short links; emails swap in their own below.
+    ...textLinks(person),
     host,
     host_name: h?.name || host,
     host_phone: h?.phone ? prettyPhone(h.phone) : "",
@@ -232,7 +227,8 @@ export function scheduleEmailData(s: any, person: any, values: ReturnType<typeof
   const h = hostFromSchedule(s);
   return {
     subject: renderTemplate(subject || "Reminder: {title}", values),
-    body: renderTemplate(body, values),
+    // Emails hide links behind words: {rsvp} becomes a "Will you be there?" link, {calendar} the long link.
+    body: renderTemplate(body, { ...values, rsvp: EMAIL_RSVP_MARK, calendar: calendarLink(person.rsvp_token) }),
     senderName: host,
     ctaUrl: calendarLink(person.rsvp_token),
     ctaLabel: "Add to calendar",
@@ -304,7 +300,7 @@ export async function deliverClaimed(args: {
     return mark("failed", r.reason ?? "email_failed");
   }
 
-  const body = args.plain ? renderTemplate(args.body, values).slice(0, 320) : finalSmsBody(args.body, values, person, hostName);
+  const body = args.plain ? spaceLinkPunctuation(renderTemplate(args.body, values)).slice(0, 320) : finalSmsBody(args.body, values, person, hostName);
   // A dry run counts toward the daily cap too, so it predicts real holds.
   if (dryRun) { owners.smsToday.set(s.owner_user_id, used + 1); return mark("dry_run"); }
   const { data: ob, error: obErr } = await admin
@@ -719,7 +715,7 @@ export async function manualSendPreview(admin: Admin, userClient: any, userId: s
     entitled: info.entitled,
     capLeft: info.isOwner ? null : Math.max(0, DAILY_SMS_CAP - (owners.smsToday.get(s.owner_user_id) ?? 0)),
     timezone: s.timezone,
-    samplePerson: first ? { firstName: firstName(first.contact?.display_name), needsIntro: !first.first_sms_sent_at, host: s.host_name || info.host, title: s.title, calendar: calendarLink(first.rsvp_token), rsvp: personPageLink(first.rsvp_token) } : null,
+    samplePerson: first ? { firstName: firstName(first.contact?.display_name), needsIntro: !first.first_sms_sent_at, host: s.host_name || info.host, title: s.title, ...textLinks(first) } : null,
     hostLine: hostSmsLine(hostFromSchedule(s)),
     declinedCount: declined.size,
   };

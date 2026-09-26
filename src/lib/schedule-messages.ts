@@ -2,6 +2,7 @@
 // quiet hours and the first-text compliance line. Shared by UI and engine.
 
 import { eventTimeZone } from "@/lib/datetime";
+import { spaceLinkPunctuation } from "@/lib/schedule-links";
 
 export interface StepDraft {
   offset_minutes: number;
@@ -187,7 +188,7 @@ export function composeScheduleSms(args: {
   maxChars?: number;
 }): string {
   const title = args.title.trim() || "Schedule reminder";
-  const message = args.message.trim();
+  const message = spaceLinkPunctuation(args.message.trim());
   const label = args.leadLabel === undefined ? "Reminder" : args.leadLabel;
   const heading = label ? `${label}: ${title}` : title;
   const startsWithHeading = message.toLocaleLowerCase().startsWith(heading.toLocaleLowerCase());

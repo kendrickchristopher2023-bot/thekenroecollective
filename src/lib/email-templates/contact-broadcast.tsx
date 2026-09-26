@@ -18,6 +18,16 @@ interface Props {
   hostNote?: string | null
 }
 
+// Schedules put this marker where {rsvp} was, so the email shows words, not a raw URL.
+const RSVP_MARK = '[[rsvp_link]]'
+function renderBody(body: string, rsvpUrl?: string | null): React.ReactNode {
+  if (!body.includes(RSVP_MARK)) return body
+  const parts = body.split(RSVP_MARK)
+  return parts.flatMap((part, i) =>
+    i === 0 ? [part] : [rsvpUrl ? <Link key={i} href={rsvpUrl} style={link}>Will you be there?</Link> : 'Will you be there?', part],
+  )
+}
+
 const Email = ({ subject, body, senderName, ctaUrl, ctaLabel, rsvpUrl, hostName, hostPhone, hostPhoneLabel, hostEmail, hostNote }: Props) => (
   <Html lang="en" dir="ltr">
     <Head />
@@ -26,16 +36,16 @@ const Email = ({ subject, body, senderName, ctaUrl, ctaLabel, rsvpUrl, hostName,
       <Container style={container}>
         <Section>
           <Heading style={h1}>{subject || 'A note for you'}</Heading>
-          <Text style={p}>{body || ''}</Text>
+          <Text style={p}>{renderBody(body || '', rsvpUrl)}</Text>
           {ctaUrl ? (
             <Section style={{ textAlign: 'center', margin: '24px 0' }}>
               <Button href={ctaUrl} style={btn}>{ctaLabel || 'Open'}</Button>
             </Section>
           ) : null}
           {rsvpUrl ? (
-            <Text style={{ ...p, textAlign: 'center' as const }}>
-              <Link href={rsvpUrl} style={link}>Let us know if you can make it</Link>
-            </Text>
+            <Section style={{ textAlign: 'center', margin: '0 0 24px' }}>
+              <Button href={rsvpUrl} style={btn}>Will you be there?</Button>
+            </Section>
           ) : null}
           {hostName || hostPhone || hostEmail ? (
             <Section style={hostBox}>
