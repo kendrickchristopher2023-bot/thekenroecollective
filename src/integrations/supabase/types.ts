@@ -3933,6 +3933,13 @@ export type Database = {
           title: string
           until_local: string | null
           updated_at: string
+          welcome_at: string | null
+          welcome_body: string | null
+          welcome_channel: string
+          welcome_enabled: boolean
+          welcome_late_joiners: boolean
+          welcome_sent_at: string | null
+          welcome_subject: string | null
         }
         Insert: {
           created_at?: string
@@ -3959,6 +3966,13 @@ export type Database = {
           title: string
           until_local?: string | null
           updated_at?: string
+          welcome_at?: string | null
+          welcome_body?: string | null
+          welcome_channel?: string
+          welcome_enabled?: boolean
+          welcome_late_joiners?: boolean
+          welcome_sent_at?: string | null
+          welcome_subject?: string | null
         }
         Update: {
           created_at?: string
@@ -3985,6 +3999,13 @@ export type Database = {
           title?: string
           until_local?: string | null
           updated_at?: string
+          welcome_at?: string | null
+          welcome_body?: string | null
+          welcome_channel?: string
+          welcome_enabled?: boolean
+          welcome_late_joiners?: boolean
+          welcome_sent_at?: string | null
+          welcome_subject?: string | null
         }
         Relationships: [
           {

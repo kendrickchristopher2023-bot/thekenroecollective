@@ -889,3 +889,98 @@ export const discardContactImport = createServerFn({ method: "POST" })
     await (supabaseAdmin as any).from("contact_imports").update({ status: "discarded", storage_path: null }).eq("id", data.importId);
     return { ok: true };
   });
+
+// ---------------- Welcome message ----------------
+
+export const getWelcome = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const sb = context.supabase as any;
+    const s = await ownedSchedule(sb, data.id); // RLS proves ownership first
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const engine = await import("@/lib/schedules-engine.server");
+    const { whenLabel, offsetLabel } = await import("@/lib/schedule-messages");
+    const before = s.welcome_enabled && !s.welcome_sent_at ? await engine.remindersBeforeWelcome(supabaseAdmin as any, s) : [];
+    const { data: rows } = await sb
+      .from("schedule_reminder_sends")
+      .select("id,status,error,channel,person_id,created_at, person:schedule_people(contact:contacts(display_name,email,phone))")
+      .eq("kind", "welcome")
+      .eq("owner_user_id", context.userId)
+      .in("person_id", (await sb.from("schedule_people").select("id").eq("schedule_id", data.id)).data?.map((p: any) => p.id).concat(["00000000-0000-0000-0000-000000000000"]) ?? []);
+    const results = (rows ?? []).map((r: any) => ({
+      id: r.id, channel: r.channel, status: r.status, reason: r.error, at: r.created_at,
+      name: r.person?.contact?.display_name || r.person?.contact?.email || r.person?.contact?.phone || "Someone",
+    }));
+    const reached = new Set(results.filter((r: any) => ["queued", "sent", "delivered", "dry_run"].includes(r.status)).map((r: any) => r.name)).size;
+    return {
+      enabled: !!s.welcome_enabled,
+      at: s.welcome_at as string | null,
+      atLabel: s.welcome_at ? whenLabel(new Date(s.welcome_at), s.timezone) : null,
+      channel: s.welcome_channel as "email" | "sms" | "both",
+      subject: s.welcome_subject as string | null,
+      body: s.welcome_body as string | null,
+      lateJoiners: !!s.welcome_late_joiners,
+      sentAt: s.welcome_sent_at as string | null,
+      sentLabel: s.welcome_sent_at ? whenLabel(new Date(s.welcome_sent_at), s.timezone) : null,
+      reached,
+      results,
+      before: before.map((b) => ({
+        ...b,
+        label: `${b.channel === "sms" ? "Text" : "Email"} ${offsetLabel(b.offset_minutes, b.is_starting_now).toLowerCase()} ${new Date(b.starts_at).toLocaleDateString("en-US", { timeZone: s.timezone, month: "short", day: "numeric" })}`,
+      })),
+      timezone: s.timezone as string,
+    };
+  });
+
+export const saveWelcome = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({
+      id: z.string().uuid(),
+      enabled: z.boolean(),
+      local: wall.nullable(),
+      channel: z.enum(["email", "sms", "both"]),
+      subject: z.string().trim().max(200).nullable(),
+      body: z.string().trim().max(4000).nullable(),
+      lateJoiners: z.boolean(),
+    }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const sb = context.supabase as any;
+    await assertCanUse(sb);
+    const s = await ownedSchedule(sb, data.id);
+    if (s.welcome_sent_at) {
+      // After it goes out only the "people I add later" choice can change.
+      const { error } = await sb.from("schedules").update({ welcome_late_joiners: data.lateJoiners }).eq("id", data.id);
+      if (error) throw new Error(error.message);
+      return { ok: true };
+    }
+    if (!data.enabled) {
+      const { error } = await sb.from("schedules").update({ welcome_enabled: false, welcome_late_joiners: data.lateJoiners }).eq("id", data.id);
+      if (error) throw new Error(error.message);
+      return { ok: true };
+    }
+    if (!data.local) throw new Error("Pick the date and time for your welcome message.");
+    if (!data.body) throw new Error("Write the welcome message.");
+    const { eventInstant } = await import("@/lib/datetime");
+    const { inQuietHours, smsSegments } = await import("@/lib/schedule-messages");
+    const at = eventInstant(data.local, s.timezone);
+    if (Number.isNaN(at.getTime())) throw new Error("That date and time is not valid.");
+    if (at.getTime() < Date.now() + 2 * 60_000) throw new Error("Pick a time at least a few minutes from now.");
+    if (data.channel !== "email" && inQuietHours(at, s.timezone)) {
+      throw new Error("Texts can't go out between 9 PM and 8 AM in the schedule's time zone. Pick a time from 8 AM to 9 PM.");
+    }
+    if (data.channel !== "email" && data.body.length > 480) throw new Error("A text welcome can be up to 480 characters.");
+    void smsSegments;
+    const { error } = await sb.from("schedules").update({
+      welcome_enabled: true,
+      welcome_at: at.toISOString(),
+      welcome_channel: data.channel,
+      welcome_subject: data.channel === "sms" ? null : data.subject || "Welcome: {title}",
+      welcome_body: data.body,
+      welcome_late_joiners: data.lateJoiners,
+    }).eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });

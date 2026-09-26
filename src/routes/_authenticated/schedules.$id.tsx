@@ -8,6 +8,7 @@ import { SkeletonPanel } from "@/components/skeletons";
 import { SchedulePeopleList } from "@/components/schedule-people-list";
 import { ScheduleImport } from "@/components/schedule-import";
 import { SendNowButton, SKIP_LABEL } from "@/components/schedule-send-now";
+import { WelcomeSection } from "@/components/schedule-welcome";
 import {
   getSchedule,
   getScheduleAccess,
@@ -151,7 +152,7 @@ function ScheduleEditor() {
             />
           ) : null}
           {data && tab === "people" ? <PeoplePanel scheduleId={id} people={data.people} removedPeople={(data as any).removedPeople ?? []} isDemo={isDemo} onChange={refresh} /> : null}
-          {data && tab === "reminders" ? <RemindersPanel scheduleId={id} steps={data.steps} problems={data.problems} history={data.history ?? []} people={data.people} onChange={refresh} /> : null}
+          {data && tab === "reminders" ? <RemindersPanel data={data} scheduleId={id} steps={data.steps} problems={data.problems} history={data.history ?? []} people={data.people} onChange={refresh} /> : null}
           {data && tab === "upcoming" ? <UpcomingPanel data={data} onChange={refresh} /> : null}
         </div>
 
@@ -494,6 +495,7 @@ const PROBLEM_LABEL: Record<string, string> = {
   no_email: "Not sent: no email address",
   demo: "Not sent: demo account",
   no_longer_scheduled: "Not sent: the date or person was removed",
+  before_welcome: "Skipped: before your welcome message",
 };
 
 const HISTORY_STATUS: Record<string, string> = {
@@ -505,7 +507,7 @@ const HISTORY_STATUS: Record<string, string> = {
   dry_run: "Test run, not sent",
 };
 
-function RemindersPanel({ scheduleId, steps, problems, history, people, onChange }: { scheduleId: string; steps: any[]; problems: any[]; history: any[]; people: any[]; onChange: () => void }) {
+function RemindersPanel({ data, scheduleId, steps, problems, history, people, onChange }: { data: any; scheduleId: string; steps: any[]; problems: any[]; history: any[]; people: any[]; onChange: () => void }) {
   const save = useServerFn(saveSteps);
   const [list, setList] = useState<StepDraft[]>(() => (steps.length ? steps : DEFAULT_STEPS).map((s: any, i: number) => ({ offset_minutes: s.offset_minutes, channel: s.channel, is_starting_now: s.is_starting_now, subject: s.subject, body: s.body, position: i })));
   const [busy, setBusy] = useState(false);
@@ -514,6 +516,7 @@ function RemindersPanel({ scheduleId, steps, problems, history, people, onChange
 
   return (
     <div className="space-y-6">
+      <WelcomeSection schedule={data.schedule} people={people} occurrences={data.occurrences} onChange={onChange} />
       <section className="rounded-3xl bg-card p-6 ring-1 ring-ink/5 sm:p-8">
         <h2 className="font-serif text-xl">Reminder plan</h2>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -570,7 +573,7 @@ function RemindersPanel({ scheduleId, steps, problems, history, people, onChange
               <li key={h.id} className="flex flex-col gap-1 py-2 sm:flex-row sm:justify-between sm:gap-4">
                 <span className="min-w-0">
                   <span className="font-medium">{names.get(h.person_id) ?? "Someone"}</span>, {h.channel === "sms" ? "text" : "email"}
-                  <span className="text-muted-foreground"> · {h.kind === "manual" ? "Sent now" : "Automatic"} · {new Date(h.sent_at ?? h.created_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span>
+                  <span className="text-muted-foreground"> · {h.kind === "manual" ? "Sent now" : h.kind === "welcome" ? "Welcome" : "Automatic"} · {new Date(h.sent_at ?? h.created_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span>
                 </span>
                 <span className="text-muted-foreground">{HISTORY_STATUS[h.status] ?? PROBLEM_LABEL[h.error] ?? (SKIP_LABEL[h.error] ? `Not sent: ${SKIP_LABEL[h.error]}` : `Not sent: ${h.error ?? h.status}`)}</span>
               </li>

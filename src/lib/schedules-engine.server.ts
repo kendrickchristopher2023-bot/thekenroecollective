@@ -91,6 +91,8 @@ export interface TickResult {
   queued: number;
   blocked: number;
   held: number;
+  skipped: number;
+  welcomes: number;
   dryRun: boolean;
 }
 
@@ -290,7 +292,7 @@ export async function runTick(
 ): Promise<TickResult> {
   const now = opts.now ?? new Date();
   const dryRun = !!opts.dryRun;
-  const res: TickResult = { considered: 0, claimed: 0, queued: 0, blocked: 0, held: 0, dryRun };
+  const res: TickResult = { considered: 0, claimed: 0, queued: 0, blocked: 0, held: 0, skipped: 0, welcomes: 0, dryRun };
   const count = (st: string) => {
     if (st === "queued" || st === "sent") res.queued++;
     else if (st === "held") res.held++;
@@ -319,6 +321,11 @@ export async function runTick(
   const owners = makeOwnerCache(admin, now);
   const optedOut = await loadOptOuts(admin, (people ?? []).map((p: any) => p.contact?.phone));
 
+  // Welcome messages go first, so a welcome due now is out before any reminder.
+  for (const s of schedules as any[]) {
+    await runWelcome(admin, s, (people ?? []).filter((x: any) => x.schedule_id === s.id), owners, optedOut, now, dryRun, res, count);
+  }
+
   for (const o of occs ?? []) {
     const s: any = byId.get((o as any).schedule_id);
     if (!s) continue;
@@ -335,6 +342,22 @@ export async function runTick(
         const channel = (st as any).channel as "email" | "sms";
         if (person.channel !== "both" && person.channel !== channel) continue;
         res.considered++;
+
+        // Reminders that fall before the welcome are recorded as skipped, never sent.
+        if (s.welcome_enabled && s.welcome_at && due < new Date(s.welcome_at)) {
+          const { data: sk } = await admin
+            .from("schedule_reminder_sends")
+            .upsert(
+              {
+                occurrence_id: (o as any).id, person_id: person.id, step_id: (st as any).id, channel,
+                owner_user_id: s.owner_user_id, due_at: due.toISOString(), status: "skipped", error: "before_welcome",
+              },
+              { onConflict: "occurrence_id,person_id,step_id,channel", ignoreDuplicates: true },
+            )
+            .select("id");
+          if ((sk as any)?.[0]?.id) res.skipped++;
+          continue;
+        }
 
         const { data: claimed } = await admin
           .from("schedule_reminder_sends")
@@ -402,6 +425,106 @@ export async function runTick(
     count(r.status);
   }
   return res;
+}
+
+// ---------------------------------------------------------------------------
+// Welcome message
+// ---------------------------------------------------------------------------
+
+export function welcomeChannels(s: any, person: any): ("email" | "sms")[] {
+  return (["email", "sms"] as const).filter(
+    (ch) => (s.welcome_channel === "both" || s.welcome_channel === ch) && (person.channel === "both" || person.channel === ch),
+  );
+}
+
+/** The first date on or after the welcome, used for {when} and the history row. */
+async function welcomeOccurrence(admin: Admin, s: any) {
+  const { data } = await admin
+    .from("schedule_occurrences")
+    .select("id, starts_at")
+    .eq("schedule_id", s.id)
+    .in("status", ["scheduled", "moved"])
+    .gte("starts_at", s.welcome_at)
+    .order("starts_at")
+    .limit(1);
+  if ((data as any)?.[0]) return (data as any)[0];
+  // The first date is past the 90-day window: work it out from the rule and
+  // attach the history row to the latest stored date.
+  const { data: exRows } = await admin.from("schedule_exceptions").select("*").eq("schedule_id", s.id);
+  const from = new Date(s.welcome_at);
+  const next = expandOccurrences(s as ScheduleRule, (exRows ?? []) as ScheduleException[], from, new Date(from.getTime() + 400 * 86_400_000))
+    .find((o) => o.status !== "skipped");
+  const { data: last } = await admin.from("schedule_occurrences").select("id").eq("schedule_id", s.id).order("starts_at", { ascending: false }).limit(1);
+  if (!next || !(last as any)?.[0]) return null;
+  return { id: (last as any)[0].id, starts_at: next.starts_at.toISOString() };
+}
+
+async function runWelcome(
+  admin: Admin, s: any, people: any[], owners: ReturnType<typeof makeOwnerCache>, optedOut: Set<string>,
+  now: Date, dryRun: boolean, res: TickResult, count: (st: string) => void,
+) {
+  if (!s.welcome_enabled || !s.welcome_at || !s.welcome_body) return;
+  if (new Date(s.welcome_at) > now) return;
+  const first = !s.welcome_sent_at;
+  if (!first && !s.welcome_late_joiners) return;
+  const occ = await welcomeOccurrence(admin, s);
+  if (!occ) return;
+  const { data: done } = await admin
+    .from("schedule_reminder_sends")
+    .select("person_id, channel")
+    .eq("kind", "welcome")
+    .in("person_id", people.map((p) => p.id).concat(["00000000-0000-0000-0000-000000000000"]));
+  const have = new Set((done ?? []).map((r: any) => `${r.person_id}:${r.channel}`));
+  const quiet = inQuietHours(now, s.timezone);
+  for (const person of people) {
+    for (const channel of welcomeChannels(s, person)) {
+      if (have.has(`${person.id}:${channel}`)) continue;
+      // A late joiner's text waits for morning rather than going out at night.
+      if (channel === "sms" && quiet && !first) continue;
+      res.considered++;
+      const { data: ins, error } = await admin
+        .from("schedule_reminder_sends")
+        .insert({
+          occurrence_id: occ.id, person_id: person.id, step_id: null, channel, kind: "welcome",
+          owner_user_id: s.owner_user_id, due_at: now.toISOString(), status: "pending",
+          subject: channel === "email" ? s.welcome_subject || "Welcome: {title}" : null, body: s.welcome_body,
+        })
+        .select("id");
+      const sendId = (ins as any)?.[0]?.id as string | undefined;
+      if (error || !sendId) continue; // unique key: already claimed by another tick
+      res.claimed++;
+      res.welcomes++;
+      const r = await deliverClaimed({
+        admin, sendId, schedule: s, person, channel, startsAt: new Date(occ.starts_at),
+        subject: s.welcome_subject || "Welcome: {title}", body: s.welcome_body, owners, optedOut, dryRun,
+      });
+      count(r.status);
+    }
+  }
+  if (first) {
+    await admin.from("schedules").update({ welcome_sent_at: now.toISOString() }).eq("id", s.id).is("welcome_sent_at", null);
+    s.welcome_sent_at = now.toISOString();
+  }
+}
+
+/** Automatic reminders that would be due between now and the welcome (next 90 days of dates). */
+export async function remindersBeforeWelcome(admin: Admin, s: any, now = new Date()) {
+  if (!s.welcome_at) return [];
+  const w = new Date(s.welcome_at);
+  const [{ data: occs }, { data: steps }] = await Promise.all([
+    admin.from("schedule_occurrences").select("id, starts_at").eq("schedule_id", s.id).in("status", ["scheduled", "moved"]).gte("starts_at", now.toISOString()).order("starts_at").limit(20),
+    admin.from("schedule_reminder_steps").select("*").eq("schedule_id", s.id).eq("active", true).order("position"),
+  ]);
+  const out: { channel: string; offset_minutes: number; is_starting_now: boolean; starts_at: string; due_at: string }[] = [];
+  for (const o of occs ?? []) {
+    const startsAt = new Date((o as any).starts_at);
+    for (const st of steps ?? []) {
+      const raw = new Date(startsAt.getTime() + (st as any).offset_minutes * 60_000);
+      const due = (st as any).channel === "sms" && !(st as any).is_starting_now ? quietHoursSendAt(raw, startsAt, s.timezone) : raw;
+      if (due >= now && due < w) out.push({ channel: (st as any).channel, offset_minutes: (st as any).offset_minutes, is_starting_now: !!(st as any).is_starting_now, starts_at: startsAt.toISOString(), due_at: due.toISOString() });
+    }
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------------------
