@@ -212,13 +212,15 @@ export function mergeValues(s: any, person: any, startsAt: Date, host: string) {
 }
 
 /** The exact text a person receives: first-text intro, message, host line, STOP line. */
-export function finalSmsBody(template: string, values: ReturnType<typeof mergeValues>, person: any, host: string) {
+export function finalSmsBody(template: string, values: ReturnType<typeof mergeValues>, person: any, host: string, leadLabel?: string | null) {
   return composeScheduleSms({
     title: values.title,
     message: renderTemplate(template, values),
     hostLine: values._hostLine,
     hostName: host,
     firstText: !person.first_sms_sent_at,
+    // Welcome texts pass null here: they are not reminders.
+    leadLabel,
   });
 }
 
@@ -259,6 +261,8 @@ export async function deliverClaimed(args: {
   dryRun: boolean;
   /** Short confirmations: no host line, no first-text intro. */
   plain?: boolean;
+  /** Word above the title. Defaults to "Reminder"; pass null for the welcome message. */
+  leadLabel?: string | null;
 }): Promise<{ status: string; reason: string | null }> {
   const { admin, sendId, schedule: s, person, channel, startsAt, owners, optedOut, dryRun } = args;
   const mark = async (status: string, error?: string | null) => {
@@ -300,7 +304,9 @@ export async function deliverClaimed(args: {
     return mark("failed", r.reason ?? "email_failed");
   }
 
-  const body = args.plain ? spaceLinkPunctuation(renderTemplate(args.body, values)).slice(0, 320) : finalSmsBody(args.body, values, person, hostName);
+  const body = args.plain
+    ? spaceLinkPunctuation(renderTemplate(args.body, values)).slice(0, 320)
+    : finalSmsBody(args.body, values, person, hostName, args.leadLabel);
   // A dry run counts toward the daily cap too, so it predicts real holds.
   if (dryRun) { owners.smsToday.set(s.owner_user_id, used + 1); return mark("dry_run"); }
   const { data: ob, error: obErr } = await admin
@@ -558,6 +564,7 @@ async function runWelcome(
       const r = await deliverClaimed({
         admin, sendId, schedule: s, person, channel, startsAt: new Date(occ.starts_at),
         subject: s.welcome_subject || "Welcome: {title}", body: s.welcome_body, owners, optedOut, dryRun,
+        leadLabel: null,
       });
       count(r.status);
     }
