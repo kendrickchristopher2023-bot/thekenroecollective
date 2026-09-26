@@ -4,7 +4,7 @@ const s = load(); const O = s.users.owner;
 const H = 3600_000;
 const HOOK = "http://localhost:8080/api/public/hooks/sms-opt-out-webhook";
 const hist = async (pid: string, occ: string, agoH: number) => {
-  const { error } = await admin.from("schedule_reminder_sends").insert({ occurrence_id: occ, person_id: pid, step_id: null, channel: "sms", kind: "manual", owner_user_id: O, due_at: new Date(Date.now() - agoH * H).toISOString(), sent_at: new Date(Date.now() - agoH * H).toISOString(), status: "sent", body: "test history" }).select("id").single();
+  const { error } = await admin.from("schedule_reminder_sends").insert({ occurrence_id: occ, person_id: pid, step_id: null, channel: "sms", kind: "welcome", owner_user_id: O, due_at: new Date(Date.now() - agoH * H).toISOString(), sent_at: new Date(Date.now() - agoH * H).toISOString(), status: "sent", body: "test history" }).select("id").single();
   if (error) throw error;
 };
 const post = async (from: string, body: string, sign: "good" | "bad" | "none" = "good") => {
