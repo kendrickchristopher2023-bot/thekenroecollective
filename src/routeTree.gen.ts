@@ -141,6 +141,7 @@ import { Route as ApiPublicGuestPrivacyVerifyRouteImport } from './routes/api/pu
 import { Route as ApiPublicGuestPrivacySubmitRouteImport } from './routes/api/public/guest-privacy.submit'
 import { Route as ApiPublicGuestPrivacyDeletionRouteImport } from './routes/api/public/guest-privacy.deletion'
 import { Route as ApiPublicCardQrSlugRouteImport } from './routes/api/public/card-qr.$slug'
+import { Route as AuthenticatedSchedulesJoinTokenRouteImport } from './routes/_authenticated/schedules.join.$token'
 import { Route as AuthenticatedProjectsAcceptInviteTokenRouteImport } from './routes/_authenticated/projects.accept-invite.$token'
 
 const WorkroomRoute = WorkroomRouteImport.update({
@@ -848,6 +849,12 @@ const ApiPublicCardQrSlugRoute = ApiPublicCardQrSlugRouteImport.update({
   path: '/api/public/card-qr/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedSchedulesJoinTokenRoute =
+  AuthenticatedSchedulesJoinTokenRouteImport.update({
+    id: '/schedules/join/$token',
+    path: '/schedules/join/$token',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedProjectsAcceptInviteTokenRoute =
   AuthenticatedProjectsAcceptInviteTokenRouteImport.update({
     id: '/projects/accept-invite/$token',
@@ -952,6 +959,7 @@ export interface FileRoutesByFullPath {
   '/events/$eventId/': typeof EventsEventIdIndexRoute
   '/wall/$eventId/': typeof WallEventIdIndexRoute
   '/projects/accept-invite/$token': typeof AuthenticatedProjectsAcceptInviteTokenRoute
+  '/schedules/join/$token': typeof AuthenticatedSchedulesJoinTokenRoute
   '/api/public/card-qr/$slug': typeof ApiPublicCardQrSlugRoute
   '/api/public/guest-privacy/deletion': typeof ApiPublicGuestPrivacyDeletionRoute
   '/api/public/guest-privacy/submit': typeof ApiPublicGuestPrivacySubmitRoute
@@ -1085,6 +1093,7 @@ export interface FileRoutesByTo {
   '/events/$eventId': typeof EventsEventIdIndexRoute
   '/wall/$eventId': typeof WallEventIdIndexRoute
   '/projects/accept-invite/$token': typeof AuthenticatedProjectsAcceptInviteTokenRoute
+  '/schedules/join/$token': typeof AuthenticatedSchedulesJoinTokenRoute
   '/api/public/card-qr/$slug': typeof ApiPublicCardQrSlugRoute
   '/api/public/guest-privacy/deletion': typeof ApiPublicGuestPrivacyDeletionRoute
   '/api/public/guest-privacy/submit': typeof ApiPublicGuestPrivacySubmitRoute
@@ -1221,6 +1230,7 @@ export interface FileRoutesById {
   '/events/$eventId/': typeof EventsEventIdIndexRoute
   '/wall/$eventId/': typeof WallEventIdIndexRoute
   '/_authenticated/projects/accept-invite/$token': typeof AuthenticatedProjectsAcceptInviteTokenRoute
+  '/_authenticated/schedules/join/$token': typeof AuthenticatedSchedulesJoinTokenRoute
   '/api/public/card-qr/$slug': typeof ApiPublicCardQrSlugRoute
   '/api/public/guest-privacy/deletion': typeof ApiPublicGuestPrivacyDeletionRoute
   '/api/public/guest-privacy/submit': typeof ApiPublicGuestPrivacySubmitRoute
@@ -1357,6 +1367,7 @@ export interface FileRouteTypes {
     | '/events/$eventId/'
     | '/wall/$eventId/'
     | '/projects/accept-invite/$token'
+    | '/schedules/join/$token'
     | '/api/public/card-qr/$slug'
     | '/api/public/guest-privacy/deletion'
     | '/api/public/guest-privacy/submit'
@@ -1490,6 +1501,7 @@ export interface FileRouteTypes {
     | '/events/$eventId'
     | '/wall/$eventId'
     | '/projects/accept-invite/$token'
+    | '/schedules/join/$token'
     | '/api/public/card-qr/$slug'
     | '/api/public/guest-privacy/deletion'
     | '/api/public/guest-privacy/submit'
@@ -1625,6 +1637,7 @@ export interface FileRouteTypes {
     | '/events/$eventId/'
     | '/wall/$eventId/'
     | '/_authenticated/projects/accept-invite/$token'
+    | '/_authenticated/schedules/join/$token'
     | '/api/public/card-qr/$slug'
     | '/api/public/guest-privacy/deletion'
     | '/api/public/guest-privacy/submit'
@@ -2697,6 +2710,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCardQrSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/schedules/join/$token': {
+      id: '/_authenticated/schedules/join/$token'
+      path: '/schedules/join/$token'
+      fullPath: '/schedules/join/$token'
+      preLoaderRoute: typeof AuthenticatedSchedulesJoinTokenRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/projects/accept-invite/$token': {
       id: '/_authenticated/projects/accept-invite/$token'
       path: '/projects/accept-invite/$token'
@@ -2733,6 +2753,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedRfqIndexRoute: typeof AuthenticatedRfqIndexRoute
   AuthenticatedSchedulesIndexRoute: typeof AuthenticatedSchedulesIndexRoute
   AuthenticatedProjectsAcceptInviteTokenRoute: typeof AuthenticatedProjectsAcceptInviteTokenRoute
+  AuthenticatedSchedulesJoinTokenRoute: typeof AuthenticatedSchedulesJoinTokenRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -2762,6 +2783,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSchedulesIndexRoute: AuthenticatedSchedulesIndexRoute,
   AuthenticatedProjectsAcceptInviteTokenRoute:
     AuthenticatedProjectsAcceptInviteTokenRoute,
+  AuthenticatedSchedulesJoinTokenRoute: AuthenticatedSchedulesJoinTokenRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

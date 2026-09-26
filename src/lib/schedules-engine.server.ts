@@ -24,6 +24,7 @@ import {
   prettyPhone,
 } from "@/lib/schedule-messages";
 import { phoneKeys, canonicalPhone } from "@/lib/phone-keys";
+import { eventInstant, eventTimeZone } from "@/lib/datetime";
 
 export const SCHEDULE_SITE_ORIGIN = "https://thekenroecollective.com";
 const HORIZON_DAYS = 90;
@@ -96,6 +97,7 @@ export interface TickResult {
   held: number;
   skipped: number;
   welcomes: number;
+  notices?: number;
   dryRun: boolean;
 }
 
@@ -246,6 +248,8 @@ export async function deliverClaimed(args: {
   owners: ReturnType<typeof makeOwnerCache>;
   optedOut: Set<string>;
   dryRun: boolean;
+  /** Short confirmations: no host line, no first-text intro. */
+  plain?: boolean;
 }): Promise<{ status: string; reason: string | null }> {
   const { admin, sendId, schedule: s, person, channel, startsAt, owners, optedOut, dryRun } = args;
   const mark = async (status: string, error?: string | null) => {
@@ -287,12 +291,12 @@ export async function deliverClaimed(args: {
     return mark("failed", r.reason ?? "email_failed");
   }
 
-  const body = finalSmsBody(args.body, values, person, hostName);
+  const body = args.plain ? renderTemplate(args.body, values).slice(0, 320) : finalSmsBody(args.body, values, person, hostName);
   // A dry run counts toward the daily cap too, so it predicts real holds.
   if (dryRun) { owners.smsToday.set(s.owner_user_id, used + 1); return mark("dry_run"); }
   const { data: ob, error: obErr } = await admin
     .from("sms_outbox")
-    .insert({ user_id: s.owner_user_id, to_phone: c.phone, guest_name: c.display_name ?? null, body, status: "pending" })
+    .insert({ user_id: s.owner_user_id, event_id: "", to_phone: c.phone, guest_name: c.display_name ?? null, body, status: "pending" })
     .select("id")
     .single();
   if (obErr || !ob) return mark("failed", obErr?.message ?? "queue_failed");
@@ -310,12 +314,19 @@ export async function deliverClaimed(args: {
 
 const PEOPLE_SELECT = "*, contact:contacts(id,display_name,email,phone,email_opt_out)";
 
+/** "occurrence:person" -> answer, for every answer on these dates. */
+export async function loadAnswers(admin: Admin, occurrenceIds: string[]): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  if (!occurrenceIds.length) return out;
+  const { data } = await admin.from("schedule_rsvps").select("occurrence_id, person_id, answer").in("occurrence_id", occurrenceIds);
+  for (const r of data ?? []) out.set(`${(r as any).occurrence_id}:${(r as any).person_id}`, (r as any).answer);
+  return out;
+}
+
 /** "occurrence:person" keys for everyone who said they cannot attend. */
 export async function loadDeclined(admin: Admin, occurrenceIds: string[]): Promise<Set<string>> {
   const out = new Set<string>();
-  if (!occurrenceIds.length) return out;
-  const { data } = await admin.from("schedule_rsvps").select("occurrence_id, person_id").in("occurrence_id", occurrenceIds).eq("answer", "no");
-  for (const r of data ?? []) out.add(`${(r as any).occurrence_id}:${(r as any).person_id}`);
+  for (const [k, v] of await loadAnswers(admin, occurrenceIds)) if (v === "no") out.add(k);
   return out;
 }
 
@@ -359,7 +370,7 @@ export async function runTick(
     await runWelcome(admin, s, (people ?? []).filter((x: any) => x.schedule_id === s.id), owners, optedOut, now, dryRun, res, count);
   }
 
-  const declined = await loadDeclined(admin, (occs ?? []).map((o: any) => o.id));
+  const answers = await loadAnswers(admin, (occs ?? []).map((o: any) => o.id));
   for (const o of occs ?? []) {
     const s: any = byId.get((o as any).schedule_id);
     if (!s) continue;
@@ -378,15 +389,18 @@ export async function runTick(
         res.considered++;
 
         // "I cannot attend" for this date: no more automatic reminders for it.
-        const declinedHere = declined.has(`${(o as any).id}:${person.id}`);
+        const ans = answers.get(`${(o as any).id}:${person.id}`);
+        const declinedHere = ans === "no";
+        // A nudge step only goes to people with no answer yet for this date.
+        const answeredHere = (st as any).audience === "no_answer" && !!ans;
         // Reminders that fall before the welcome are recorded as skipped, never sent.
-        if (declinedHere || (s.welcome_enabled && s.welcome_at && due < new Date(s.welcome_at))) {
+        if (declinedHere || answeredHere || (s.welcome_enabled && s.welcome_at && due < new Date(s.welcome_at))) {
           const { data: sk } = await admin
             .from("schedule_reminder_sends")
             .upsert(
               {
                 occurrence_id: (o as any).id, person_id: person.id, step_id: (st as any).id, channel,
-                owner_user_id: s.owner_user_id, due_at: due.toISOString(), status: "skipped", error: declinedHere ? "cannot_attend" : "before_welcome",
+                owner_user_id: s.owner_user_id, due_at: due.toISOString(), status: "skipped", error: declinedHere ? "cannot_attend" : answeredHere ? "already_answered" : "before_welcome",
               },
               { onConflict: "occurrence_id,person_id,step_id,channel", ignoreDuplicates: true },
             )
@@ -460,6 +474,8 @@ export async function runTick(
     });
     count(r.status);
   }
+
+  res.notices = await runHostNotices(admin, schedules as any[], (occs ?? []) as any[], owners, now, dryRun);
   return res;
 }
 
@@ -605,10 +621,12 @@ export interface ManualPlanRow {
   sms: { go: boolean; reason: string | null; minutesAgo?: number } | null;
 }
 
-async function loadForManual(admin: Admin, userClient: any, userId: string, scheduleId: string, occurrenceId: string | null, now: Date) {
-  // Ownership is proven through the caller's own client (RLS) before any admin read or write.
-  const { data: owned, error } = await userClient.from("schedules").select("id, owner_user_id").eq("id", scheduleId).maybeSingle();
-  if (error || !owned || owned.owner_user_id !== userId) throw new Error("Schedule not found.");
+async function loadForManual(admin: Admin, userClient: any, userId: string, scheduleId: string, occurrenceId: string | null, now: Date, verified = false) {
+  // Ownership (or an edit co-host role, checked by the caller) is proven before any admin read or write.
+  if (!verified) {
+    const { data: owned, error } = await userClient.from("schedules").select("id, owner_user_id").eq("id", scheduleId).maybeSingle();
+    if (error || !owned || owned.owner_user_id !== userId) throw new Error("Schedule not found.");
+  }
   const [{ data: s }, { data: occs }, { data: steps }, { data: people }] = await Promise.all([
     admin.from("schedules").select("*").eq("id", scheduleId).single(),
     admin.from("schedule_occurrences").select("*").eq("schedule_id", scheduleId).in("status", ["scheduled", "moved"]).gte("ends_at", now.toISOString()).order("starts_at").limit(12),
@@ -635,8 +653,8 @@ async function recentManual(admin: Admin, occurrenceId: string, now: Date) {
 
 export async function manualSendPreview(admin: Admin, userClient: any, userId: string, input: {
   scheduleId: string; occurrenceId: string | null; channel: "email" | "sms" | "both"; personIds: string[] | null; includeDeclined?: boolean;
-}, now = new Date()) {
-  const { s, occs, occ, steps, people } = await loadForManual(admin, userClient, userId, input.scheduleId, input.occurrenceId, now);
+}, now = new Date(), verified = false) {
+  const { s, occs, occ, steps, people } = await loadForManual(admin, userClient, userId, input.scheduleId, input.occurrenceId, now, verified);
   const owners = makeOwnerCache(admin, now);
   const info = await owners.info(s.owner_user_id);
   const dates = occs.map((o) => ({ id: o.id, startsAt: o.starts_at, label: whenLabel(new Date(o.starts_at), s.timezone) }));
@@ -707,8 +725,8 @@ export interface ManualResultRow {
 export async function manualSend(admin: Admin, userClient: any, userId: string, input: {
   scheduleId: string; occurrenceId: string; channel: "email" | "sms" | "both"; personIds: string[] | null;
   requestId: string; subject: string; emailBody: string; smsBody: string; textsAtMorning: boolean; forceDryRun: boolean; includeDeclined?: boolean;
-}, now = new Date()) {
-  const { s, occ, people } = await loadForManual(admin, userClient, userId, input.scheduleId, input.occurrenceId, now);
+}, now = new Date(), verified = false) {
+  const { s, occ, people } = await loadForManual(admin, userClient, userId, input.scheduleId, input.occurrenceId, now, verified);
   if (!occ) throw new Error("That date is no longer on the schedule.");
   const startsAt = new Date(occ.starts_at);
   const owners = makeOwnerCache(admin, now);
@@ -787,4 +805,164 @@ export async function manualSend(admin: Admin, userClient: any, userId: string, 
     }
   }
   return { results: out, dateLabel: whenLabel(startsAt, s.timezone) };
+}
+
+
+// ---------------------------------------------------------------------------
+// Host notices: the morning-of summary and batched instant notices
+// ---------------------------------------------------------------------------
+
+const INSTANT_GAP_MS = 15 * 60_000;
+
+/** 8:00 AM on the day of the call, or 8:00 PM the evening before when the call is earlier than 9 AM. */
+export function summaryDueAt(startsAt: Date, timezone: string): Date {
+  const tz = eventTimeZone(timezone);
+  const ymd = new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(startsAt);
+  const morning = eventInstant(`${ymd}T08:00`, tz);
+  if (morning.getTime() <= startsAt.getTime() - 60 * 60_000) return morning;
+  const prev = new Date(`${ymd}T12:00:00Z`);
+  prev.setUTCDate(prev.getUTCDate() - 1);
+  return eventInstant(`${prev.toISOString().slice(0, 10)}T20:00`, tz);
+}
+
+export function reportLink(scheduleId: string): string {
+  return `${SCHEDULE_SITE_ORIGIN}/schedules/${scheduleId}`;
+}
+
+/** Where the host hears about answers: host details first, then the owner's own profile and sign-in email. */
+async function hostContact(admin: Admin, s: any): Promise<{ phone: string | null; email: string | null }> {
+  let phone = s.host_phone || null;
+  let email = s.host_email || null;
+  if (!phone) {
+    const { data } = await admin.from("profiles").select("phone").eq("id", s.owner_user_id).maybeSingle();
+    phone = ((data as any)?.phone as string) || null;
+  }
+  if (!email) {
+    const { data } = await admin.auth.admin.getUserById(s.owner_user_id);
+    email = data?.user?.email ?? null;
+  }
+  return { phone, email };
+}
+
+function channelsOf(setting: string): ("email" | "sms")[] {
+  return setting === "both" ? ["email", "sms"] : setting === "email" || setting === "sms" ? [setting] : [];
+}
+
+export async function attendanceCounts(admin: Admin, scheduleId: string, occurrenceId: string) {
+  const [{ data: people }, { data: rs }] = await Promise.all([
+    admin.from("schedule_people").select("id").eq("schedule_id", scheduleId).is("removed_at", null),
+    admin.from("schedule_rsvps").select("person_id, answer").eq("occurrence_id", occurrenceId),
+  ]);
+  const active = new Set((people ?? []).map((p: any) => p.id));
+  const c = { yes: 0, maybe: 0, no: 0, none: 0 };
+  const seen = new Set<string>();
+  for (const r of rs ?? []) if (active.has((r as any).person_id)) { (c as any)[(r as any).answer]++; seen.add((r as any).person_id); }
+  c.none = active.size - seen.size;
+  return c;
+}
+
+export function summaryText(s: any, startsAt: Date, c: { yes: number; maybe: number; no: number; none: number }) {
+  const when = whenLabel(startsAt, s.timezone);
+  return `${s.title}, ${when}: ${c.yes} will attend, ${c.maybe} may, ${c.no} cannot, ${c.none} no answer. Report: ${reportLink(s.id)}`;
+}
+
+async function sendNotice(admin: Admin, args: {
+  noticeId: string; s: any; channel: "email" | "sms"; to: string | null; subject: string; body: string;
+  info: OwnerInfo; optedOut: Set<string>; dryRun: boolean;
+}): Promise<string> {
+  const { noticeId, s, channel, to, info, dryRun } = args;
+  const mark = async (status: string, error: string | null = null, extra: Record<string, unknown> = {}) => {
+    await admin.from("schedule_host_notices").update({ status, error, to_address: to, body: args.body, ...extra }).eq("id", noticeId);
+    return status;
+  };
+  if (s.is_demo || info.demo) return mark("dry_run", "demo");
+  if (!info.entitled) return mark("paused", "plan_downgraded");
+  if (!to) return mark("blocked", channel === "sms" ? "no_phone" : "no_email");
+  if (channel === "sms" && args.optedOut.has(canonicalPhone(to))) return mark("blocked", "opted_out");
+  if (dryRun) return mark("dry_run");
+  if (channel === "sms") {
+    const { data: ob, error } = await admin.from("sms_outbox").insert({ user_id: s.owner_user_id, event_id: "", to_phone: to, guest_name: "Host", body: args.body.slice(0, 480), status: "pending" }).select("id").single();
+    if (error || !ob) return mark("failed", error?.message ?? "queue_failed");
+    return mark("queued", null, { sms_outbox_id: (ob as any).id, sent_at: new Date().toISOString() });
+  }
+  const { enqueueTransactionalEmailServer } = await import("@/lib/email/server-enqueue.server");
+  const r = await enqueueTransactionalEmailServer({
+    templateName: "contact-broadcast",
+    recipientEmail: to,
+    idempotencyKey: `sched-notice-${noticeId}`,
+    label: "schedule_host_notice",
+    fromName: "Kenroe Schedules",
+    templateData: { subject: args.subject, body: args.body, senderName: "Kenroe Schedules", ctaUrl: reportLink(s.id), ctaLabel: "Open the attendance report" },
+  });
+  if (!r.ok) return mark("failed", r.reason ?? "email_failed");
+  return mark(r.reason === "demo" ? "blocked" : "sent", r.reason ?? null, { sent_at: new Date().toISOString() });
+}
+
+export async function runHostNotices(admin: Admin, schedules: any[], occs: any[], owners: ReturnType<typeof makeOwnerCache>, now: Date, dryRun: boolean): Promise<number> {
+  let n = 0;
+  for (const s of schedules) {
+    const sumCh = channelsOf(s.summary_channel);
+    const instCh = channelsOf(s.instant_channel);
+    if (!sumCh.length && !instCh.length) continue;
+    const info = await owners.info(s.owner_user_id);
+    const to = await hostContact(admin, s);
+    const optedOut = await loadOptOuts(admin, [to.phone]);
+
+    // Morning-of summary, once per date and channel (unique bucket = the date's id).
+    for (const o of occs.filter((x) => x.schedule_id === s.id)) {
+      const startsAt = new Date(o.starts_at);
+      const due = summaryDueAt(startsAt, s.timezone);
+      if (now < due || now >= startsAt) continue;
+      for (const ch of sumCh) {
+        const { data: ins } = await admin
+          .from("schedule_host_notices")
+          .upsert({ schedule_id: s.id, owner_user_id: s.owner_user_id, occurrence_id: o.id, kind: "summary", channel: ch, bucket: o.id, status: "pending" }, { onConflict: "schedule_id,kind,channel,bucket", ignoreDuplicates: true })
+          .select("id");
+        const id = (ins as any)?.[0]?.id as string | undefined;
+        if (!id) continue;
+        const c = await attendanceCounts(admin, s.id, o.id);
+        const body = summaryText(s, startsAt, c);
+        await sendNotice(admin, { noticeId: id, s, channel: ch, to: ch === "sms" ? to.phone : to.email, subject: `${s.title}: ${c.yes} will attend`, body, info, optedOut, dryRun });
+        n++;
+      }
+    }
+
+    // Instant notices: at most one per channel every 15 minutes, covering every new answer since the last one.
+    for (const ch of instCh) {
+      if (ch === "sms" && inQuietHours(now, s.timezone)) continue; // waits for the morning, answers are kept
+      const { data: last } = await admin.from("schedule_host_notices").select("created_at, answers_through").eq("schedule_id", s.id).eq("kind", "instant").eq("channel", ch).order("created_at", { ascending: false }).limit(1);
+      const prev: any = last?.[0];
+      if (prev && now.getTime() - new Date(prev.created_at).getTime() < INSTANT_GAP_MS) continue;
+      const since = prev?.answers_through ?? new Date(now.getTime() - 86_400_000).toISOString();
+      const { data: fresh } = await admin
+        .from("schedule_rsvps")
+        .select("answer, answered_at, occurrence_id, person:schedule_people(contact:contacts(display_name)), occ:schedule_occurrences(starts_at)")
+        .eq("schedule_id", s.id)
+        .neq("source", "host")
+        .gt("answered_at", since)
+        .lte("answered_at", now.toISOString())
+        .order("answered_at")
+        .limit(50);
+      if (!fresh?.length) continue;
+      const bucket = new Date(Math.floor(now.getTime() / INSTANT_GAP_MS) * INSTANT_GAP_MS).toISOString();
+      const through = (fresh[fresh.length - 1] as any).answered_at;
+      const { data: ins } = await admin
+        .from("schedule_host_notices")
+        .upsert({ schedule_id: s.id, owner_user_id: s.owner_user_id, kind: "instant", channel: ch, bucket, status: "pending", answers_through: through }, { onConflict: "schedule_id,kind,channel,bucket", ignoreDuplicates: true })
+        .select("id");
+      const id = (ins as any)?.[0]?.id as string | undefined;
+      if (!id) continue;
+      const word: Record<string, string> = { yes: "will attend", maybe: "may attend", no: "cannot attend" };
+      const lines = fresh.slice(0, 6).map((r: any) => {
+        const who = String(r.person?.contact?.display_name ?? "Someone").split(/\s+/)[0];
+        const day = r.occ?.starts_at ? new Date(r.occ.starts_at).toLocaleDateString("en-US", { timeZone: eventTimeZone(s.timezone), month: "short", day: "numeric" }) : "";
+        return `${who} ${word[r.answer] ?? r.answer}${day ? ` ${day}` : ""}`;
+      });
+      const more = fresh.length > 6 ? `, and ${fresh.length - 6} more` : "";
+      const body = `${s.title}: ${fresh.length === 1 ? "new answer" : `${fresh.length} new answers`}. ${lines.join(", ")}${more}. Report: ${reportLink(s.id)}`;
+      await sendNotice(admin, { noticeId: id, s, channel: ch, to: ch === "sms" ? to.phone : to.email, subject: `${s.title}: ${fresh.length === 1 ? "a new answer" : `${fresh.length} new answers`}`, body, info, optedOut, dryRun });
+      n++;
+    }
+  }
+  return n;
 }

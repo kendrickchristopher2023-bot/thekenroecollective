@@ -10,6 +10,8 @@ export interface StepDraft {
   subject: string | null;
   body: string;
   position: number;
+  /** "no_answer" sends only to people who have not answered for that date. */
+  audience?: "all" | "no_answer";
 }
 
 export const MERGE_FIELDS = ["first_name", "title", "when", "join", "calendar", "rsvp", "host", "host_name", "host_phone", "host_email", "host_note"] as const;
@@ -27,6 +29,30 @@ export const DEFAULT_STEPS: StepDraft[] = [
   { offset_minutes: -60, channel: "sms", is_starting_now: false, subject: null, body: "{title} starts in 1 hour ({when}). Join: {join}", position: 2 },
   { offset_minutes: 0, channel: "sms", is_starting_now: true, subject: null, body: "{title} is starting now. Join: {join}", position: 3 },
 ];
+
+/** Offered on the Reminders tab: a text 2 days before, only to people who have not answered. */
+export const NUDGE_STEP: StepDraft = {
+  offset_minutes: -2 * 24 * 60,
+  channel: "sms",
+  is_starting_now: false,
+  subject: null,
+  body: "Hi {first_name}, are you joining {title} on {when}? Reply 1 if you will attend, 2 if you may, 3 if you cannot. Or tap {rsvp}",
+  position: 0,
+  audience: "no_answer",
+};
+
+/** Words and numbers a person can text back to answer. Order matters: exact numbers first. */
+const REPLY_YES = new Set(["1", "yes", "y", "yep", "yeah", "yes!", "will", "will attend", "i will", "i will attend", "i'll be there", "ill be there", "attending", "count me in", "si", "sí"]);
+const REPLY_MAYBE = new Set(["2", "maybe", "m", "may", "may attend", "might", "not sure", "unsure", "tal vez", "quizas", "quizás"]);
+const REPLY_NO = new Set(["3", "no", "n", "nope", "cannot", "cannot attend", "can't", "cant", "can't make it", "cant make it", "can't attend", "cant attend", "not coming", "won't make it", "wont make it", "no thanks"]);
+
+export function parseReplyAnswer(body: string): "yes" | "maybe" | "no" | null {
+  const c = String(body ?? "").trim().toLowerCase().replace(/[’]/g, "'").replace(/[.!,]+$/, "").replace(/\s+/g, " ");
+  if (REPLY_YES.has(c)) return "yes";
+  if (REPLY_MAYBE.has(c)) return "maybe";
+  if (REPLY_NO.has(c)) return "no";
+  return null;
+}
 
 export interface MergeValues {
   first_name?: string | null;

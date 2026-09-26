@@ -9,7 +9,8 @@ import { SchedulePeopleList } from "@/components/schedule-people-list";
 import { ScheduleImport } from "@/components/schedule-import";
 import { SendNowButton, SKIP_LABEL } from "@/components/schedule-send-now";
 import { WelcomeSection } from "@/components/schedule-welcome";
-import { AttendanceReport, RsvpSuggestion } from "@/components/schedule-attendance";
+import { AttendanceHistory, AttendanceReport, RsvpSuggestion } from "@/components/schedule-attendance";
+import { CohostsPanel, HostNoticesSection, ROLE_LABEL } from "@/components/schedule-cohosts";
 import { getHostDefaults } from "@/lib/schedules.functions";
 import {
   getSchedule,
@@ -26,7 +27,7 @@ import {
   runScheduleEngine,
 } from "@/lib/schedules.functions";
 import { buildRrule, describeRule, monthDayWarning, parseRepeat, WEEKDAYS, ordinal, type RepeatInput, type Weekday } from "@/lib/schedule-rrule";
-import { whenLabel, offsetLabel, DEFAULT_STEPS, MERGE_FIELDS, type StepDraft } from "@/lib/schedule-messages";
+import { whenLabel, offsetLabel, DEFAULT_STEPS, MERGE_FIELDS, NUDGE_STEP, type StepDraft } from "@/lib/schedule-messages";
 import { toUserMessage } from "@/lib/user-error";
 import { confirmDialog } from "@/lib/confirm-dialog";
 
@@ -45,7 +46,14 @@ export const Route = createFileRoute("/_authenticated/schedules/$id")({
   component: ScheduleEditor,
 });
 
-type Tab = "details" | "people" | "reminders" | "upcoming" | "attendance";
+type Tab = "details" | "people" | "reminders" | "upcoming" | "attendance" | "cohosts";
+type Role = "owner" | "edit" | "view";
+
+const TABS_FOR: Record<Role, Tab[]> = {
+  owner: ["details", "people", "reminders", "upcoming", "attendance", "cohosts"],
+  edit: ["attendance", "people", "reminders", "upcoming"],
+  view: ["attendance", "upcoming"],
+};
 
 const US_ZONES = ["America/New_York", "America/Chicago", "America/Denver", "America/Phoenix", "America/Los_Angeles", "America/Anchorage", "Pacific/Honolulu"];
 const DAY_LABEL: Record<Weekday, string> = { MO: "Mon", TU: "Tue", WE: "Wed", TH: "Thu", FR: "Fri", SA: "Sat", SU: "Sun" };
@@ -112,6 +120,10 @@ function ScheduleEditor() {
   }, [access, refresh]);
 
   const title = isNew ? "New schedule" : data?.schedule?.title ?? "Schedule";
+  const role: Role = isNew ? "owner" : ((data?.role as Role) ?? "owner");
+  const tabs = TABS_FOR[role];
+  useEffect(() => { if (data && !tabs.includes(tab)) setTab(tabs[0]!); }, [data, tabs, tab]);
+  const planOk = role === "owner" ? canUse : data ? data.canUse : null;
 
   return (
     <div className="min-h-screen bg-paper">
@@ -125,21 +137,28 @@ function ScheduleEditor() {
             <h1 className="font-serif text-3xl sm:text-4xl">{title}</h1>
             {data?.schedule ? <p className="mt-1 text-sm text-muted-foreground">{describeRule(data.schedule.rrule)} · {data.schedule.timezone.replace(/_/g, " ")}</p> : null}
           </div>
-          {data ? <SendNowButton scheduleId={id} people={data.people} onDone={refresh} /> : null}
+          {data && role !== "view" ? <SendNowButton scheduleId={id} people={data.people} onDone={refresh} /> : null}
         </div>
 
-        {canUse === false ? (
+        {data && role !== "owner" ? (
+          <p className="mt-5 rounded-2xl bg-secondary p-4 text-sm">
+            Shared with you by {data.ownerName || "the owner"}. You can {role === "edit" ? "edit the people and messages and see the report" : "see the attendance report"}.
+          </p>
+        ) : null}
+        {planOk === false ? (
           <p className="mt-5 rounded-2xl bg-amber-100 p-4 text-sm text-amber-900">
-            Reminders are paused because your plan no longer includes Schedules. Everything is kept and you can still edit it. <Link to="/pricing" className="underline">See plans</Link>
+            {role === "owner"
+              ? <>Reminders are paused because your plan no longer includes Schedules. Everything is kept and you can still edit it. <Link to="/pricing" className="underline">See plans</Link></>
+              : "Reminders are paused because the owner's plan no longer includes Schedules."}
           </p>
         ) : null}
         {error ? <p className="mt-5 rounded-2xl bg-destructive/10 p-4 text-sm text-destructive">{error}</p> : null}
 
         {!isNew ? (
           <nav className="mt-6 flex gap-1 overflow-x-auto rounded-full bg-card p-1 ring-1 ring-ink/5" aria-label="Schedule sections">
-            {(["details", "people", "reminders", "upcoming", "attendance"] as Tab[]).map((t) => (
+            {tabs.map((t) => (
               <button key={t} onClick={() => setTab(t)} className={`whitespace-nowrap rounded-full px-4 py-2 text-sm ${tab === t ? "bg-velvet text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-                {t === "details" ? "Details" : t === "people" ? `People${data ? ` (${data.people.length})` : ""}` : t === "reminders" ? "Reminders" : t === "upcoming" ? "Upcoming" : "Attendance"}
+                {t === "details" ? "Details" : t === "people" ? `People${data ? ` (${data.people.length})` : ""}` : t === "reminders" ? "Reminders" : t === "upcoming" ? "Upcoming" : t === "cohosts" ? "Co-hosts" : "Attendance"}
               </button>
             ))}
           </nav>
@@ -147,7 +166,7 @@ function ScheduleEditor() {
 
         <div className="mt-6">
           {!isNew && !data && !error ? <SkeletonPanel /> : null}
-          {(isNew || data) && tab === "details" ? (
+          {(isNew || data) && tab === "details" && role === "owner" ? (
             <DetailsForm
               initial={isNew ? null : data.schedule}
               disabled={canUse === false && isNew}
@@ -157,13 +176,14 @@ function ScheduleEditor() {
               }}
             />
           ) : null}
-          {data && tab === "people" ? <PeoplePanel scheduleId={id} people={data.people} removedPeople={(data as any).removedPeople ?? []} isDemo={isDemo} onChange={refresh} /> : null}
-          {data && tab === "reminders" ? <RemindersPanel data={data} scheduleId={id} steps={data.steps} problems={data.problems} history={data.history ?? []} people={data.people} onChange={refresh} /> : null}
-          {data && tab === "upcoming" ? <UpcomingPanel data={data} onChange={refresh} /> : null}
-          {data && tab === "attendance" ? <AttendanceReport scheduleId={id} /> : null}
+          {data && tab === "people" && role !== "view" ? <PeoplePanel scheduleId={id} people={data.people} removedPeople={(data as any).removedPeople ?? []} isDemo={isDemo} isOwnerOfSchedule={role === "owner"} onChange={refresh} /> : null}
+          {data && tab === "reminders" && role !== "view" ? <RemindersPanel data={data} scheduleId={id} steps={data.steps} problems={data.problems} history={data.history ?? []} people={data.people} isOwnerOfSchedule={role === "owner"} onChange={refresh} /> : null}
+          {data && tab === "upcoming" ? <UpcomingPanel data={data} readOnly={role !== "owner"} onChange={refresh} /> : null}
+          {data && tab === "attendance" ? <div className="space-y-6"><AttendanceReport scheduleId={id} canEdit={role !== "view"} /><AttendanceHistory scheduleId={id} /></div> : null}
+          {data && tab === "cohosts" && role === "owner" ? <CohostsPanel scheduleId={id} /> : null}
         </div>
 
-        {data ? <DangerZone scheduleId={id} status={data.schedule.status} isOwner={isOwner} onChange={refresh} /> : null}
+        {data && role === "owner" ? <DangerZone scheduleId={id} status={data.schedule.status} isOwner={isOwner} onChange={refresh} /> : null}
       </main>
       <SiteFooter />
     </div>
@@ -401,7 +421,7 @@ function DetailsForm({ initial, disabled, onSaved }: { initial: any | null; disa
 
 // ---------------- People ----------------
 
-function PeoplePanel({ scheduleId, people, removedPeople, isDemo, onChange }: { scheduleId: string; people: any[]; removedPeople: any[]; isDemo: boolean; onChange: () => void }) {
+function PeoplePanel({ scheduleId, people, removedPeople, isDemo, isOwnerOfSchedule, onChange }: { scheduleId: string; people: any[]; removedPeople: any[]; isDemo: boolean; isOwnerOfSchedule: boolean; onChange: () => void }) {
   const add = useServerFn(addPeople);
   const loadContacts = useServerFn(listMyContacts);
   const [book, setBook] = useState<{ contacts: any[]; groups: any[] } | null>(null);
@@ -416,7 +436,8 @@ function PeoplePanel({ scheduleId, people, removedPeople, isDemo, onChange }: { 
   const [busy, setBusy] = useState(false);
   const [showImport, setShowImport] = useState(false);
 
-  useEffect(() => { void loadContacts().then(setBook).catch(() => setBook({ contacts: [], groups: [] })); }, [loadContacts]);
+  // Co-hosts never see the owner's contact book.
+  useEffect(() => { if (!isOwnerOfSchedule) { setBook({ contacts: [], groups: [] }); return; } void loadContacts().then(setBook).catch(() => setBook({ contacts: [], groups: [] })); }, [loadContacts, isOwnerOfSchedule]);
   const already = new Set(people.map((p) => p.contact_id));
   const needsConsent = channel !== "email";
 
@@ -442,7 +463,7 @@ function PeoplePanel({ scheduleId, people, removedPeople, isDemo, onChange }: { 
       <section className="rounded-3xl bg-card p-6 ring-1 ring-ink/5 sm:p-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-serif text-xl">Add people</h2>
-          <button type="button" className={btn2} onClick={() => setShowImport((s) => !s)}>{showImport ? "Close import" : "Import from a file or photo"}</button>
+          {isOwnerOfSchedule ? <button type="button" className={btn2} onClick={() => setShowImport((s) => !s)}>{showImport ? "Close import" : "Import from a file or photo"}</button> : null}
         </div>
 
         {showImport ? null : <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -532,6 +553,7 @@ const PROBLEM_LABEL: Record<string, string> = {
   no_longer_scheduled: "Not sent: the date or person was removed",
   before_welcome: "Skipped: before your welcome message",
   cannot_attend: "Skipped: said they cannot attend",
+  already_answered: "Skipped: already answered",
 };
 
 const HISTORY_STATUS: Record<string, string> = {
@@ -543,9 +565,10 @@ const HISTORY_STATUS: Record<string, string> = {
   dry_run: "Test run, not sent",
 };
 
-function RemindersPanel({ data, scheduleId, steps, problems, history, people, onChange }: { data: any; scheduleId: string; steps: any[]; problems: any[]; history: any[]; people: any[]; onChange: () => void }) {
+function RemindersPanel({ data, scheduleId, steps, problems, history, people, isOwnerOfSchedule, onChange }: { data: any; scheduleId: string; steps: any[]; problems: any[]; history: any[]; people: any[]; isOwnerOfSchedule: boolean; onChange: () => void }) {
   const save = useServerFn(saveSteps);
-  const [list, setList] = useState<StepDraft[]>(() => (steps.length ? steps : DEFAULT_STEPS).map((s: any, i: number) => ({ offset_minutes: s.offset_minutes, channel: s.channel, is_starting_now: s.is_starting_now, subject: s.subject, body: s.body, position: i })));
+  const [list, setList] = useState<StepDraft[]>(() => (steps.length ? steps : DEFAULT_STEPS).map((s: any, i: number) => ({ offset_minutes: s.offset_minutes, channel: s.channel, is_starting_now: s.is_starting_now, subject: s.subject, body: s.body, position: i, audience: s.audience ?? "all" })));
+  const hasNudge = list.some((s) => s.audience === "no_answer");
   const [busy, setBusy] = useState(false);
   const up = (i: number, patch: Partial<StepDraft>) => setList((l) => l.map((s, j) => (j === i ? { ...s, ...patch } : s)));
   const names = new Map(people.map((p) => [p.id, p.contact?.display_name || p.contact?.email || p.contact?.phone]));
@@ -553,7 +576,8 @@ function RemindersPanel({ data, scheduleId, steps, problems, history, people, on
   return (
     <div className="space-y-6">
       <RsvpSuggestion scheduleId={scheduleId} steps={steps} onDone={onChange} />
-      <WelcomeSection schedule={data.schedule} people={people} occurrences={data.occurrences} onChange={onChange} />
+      {isOwnerOfSchedule ? <WelcomeSection schedule={data.schedule} people={people} occurrences={data.occurrences} onChange={onChange} /> : null}
+      {isOwnerOfSchedule ? <HostNoticesSection schedule={data.schedule} onChange={onChange} /> : null}
       <section className="rounded-3xl bg-card p-6 ring-1 ring-ink/5 sm:p-8">
         <h2 className="font-serif text-xl">Reminder plan</h2>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -575,14 +599,21 @@ function RemindersPanel({ data, scheduleId, steps, problems, history, people, on
               {s.channel === "email" ? <input className={field} value={s.subject ?? ""} placeholder="Subject" aria-label="Subject" onChange={(e) => up(i, { subject: e.target.value })} /> : null}
               <textarea className={field} rows={s.channel === "email" ? 5 : 2} value={s.body} aria-label="Message" onChange={(e) => up(i, { body: e.target.value })} />
               {s.channel === "sms" ? <p className="mt-1 text-xs text-muted-foreground">{s.body.length} characters. The first text to each person also says it is from you and "Reply STOP to opt out."</p> : null}
+              {!s.is_starting_now ? (
+                <label className="mt-2 flex items-center gap-2 text-sm">
+                  <input type="checkbox" className="h-4 w-4" checked={s.audience === "no_answer"} onChange={(e) => up(i, { audience: e.target.checked ? "no_answer" : "all" })} />
+                  Only to people who have not answered
+                </label>
+              ) : null}
             </li>
           ))}
         </ol>
         <div className="mt-5 flex flex-wrap gap-3">
-          <button type="button" className={btn2} disabled={list.length >= 10} onClick={() => setList((l) => [...l, { offset_minutes: -1440, channel: "sms", is_starting_now: false, subject: null, body: "Reminder: {title} is {when}. Join: {join}", position: l.length }])}>Add a reminder</button>
+          <button type="button" className={btn2} disabled={list.length >= 10} onClick={() => setList((l) => [...l, { offset_minutes: -1440, channel: "sms", is_starting_now: false, subject: null, body: "Reminder: {title} is {when}. Join: {join}", position: l.length, audience: "all" }])}>Add a reminder</button>
+          {!hasNudge ? <button type="button" className={btn2} disabled={list.length >= 10} onClick={() => setList((l) => [...l, { ...NUDGE_STEP, position: l.length }])}>Add a nudge 2 days before, to people who have not answered</button> : null}
           <button type="button" className={btn} disabled={busy} onClick={async () => {
             setBusy(true);
-            try { await save({ data: { id: scheduleId, steps: list.map(({ position: _p, ...s }) => ({ ...s, subject: s.channel === "email" ? s.subject || "Reminder: {title}" : null })) } }); toast.success("Reminder plan saved"); onChange(); }
+            try { await save({ data: { id: scheduleId, steps: list.map(({ position: _p, ...s }) => ({ ...s, audience: s.audience ?? "all", subject: s.channel === "email" ? s.subject || "Reminder: {title}" : null })) } }); toast.success("Reminder plan saved"); onChange(); }
             catch (e) { toast.error(toUserMessage(e)); } finally { setBusy(false); }
           }}>Save reminder plan</button>
         </div>
@@ -610,7 +641,7 @@ function RemindersPanel({ data, scheduleId, steps, problems, history, people, on
               <li key={h.id} className="flex flex-col gap-1 py-2 sm:flex-row sm:justify-between sm:gap-4">
                 <span className="min-w-0">
                   <span className="font-medium">{names.get(h.person_id) ?? "Someone"}</span>, {h.channel === "sms" ? "text" : "email"}
-                  <span className="text-muted-foreground"> · {h.kind === "manual" ? "Sent now" : h.kind === "welcome" ? "Welcome" : "Automatic"} · {new Date(h.sent_at ?? h.created_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span>
+                  <span className="text-muted-foreground"> · {h.kind === "manual" ? "Sent now" : h.kind === "welcome" ? "Welcome" : h.kind === "reply" ? "Reply to their text" : "Automatic"} · {new Date(h.sent_at ?? h.created_at).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span>
                 </span>
                 <span className="text-muted-foreground">{HISTORY_STATUS[h.status] ?? PROBLEM_LABEL[h.error] ?? (SKIP_LABEL[h.error] ? `Not sent: ${SKIP_LABEL[h.error]}` : `Not sent: ${h.error ?? h.status}`)}</span>
               </li>
@@ -624,7 +655,7 @@ function RemindersPanel({ data, scheduleId, steps, problems, history, people, on
 
 // ---------------- Upcoming ----------------
 
-function UpcomingPanel({ data, onChange }: { data: any; onChange: () => void }) {
+function UpcomingPanel({ data, readOnly, onChange }: { data: any; readOnly: boolean; onChange: () => void }) {
   const setEx = useServerFn(setException);
   const [moving, setMoving] = useState<string | null>(null);
   const [moveTo, setMoveTo] = useState("");
@@ -639,7 +670,7 @@ function UpcomingPanel({ data, onChange }: { data: any; onChange: () => void }) 
   return (
     <section className="rounded-3xl bg-card p-6 ring-1 ring-ink/5 sm:p-8">
       <h2 className="font-serif text-xl">Upcoming dates</h2>
-      <p className="mt-1 text-sm text-muted-foreground">Skip or move one date without changing the rest.</p>
+      {readOnly ? null : <p className="mt-1 text-sm text-muted-foreground">Skip or move one date without changing the rest.</p>}
       <ul className="mt-4 divide-y divide-ink/5">
         {data.occurrences.map((o: any) => {
           const original = String(o.occurrence_local).replace(" ", "T").slice(0, 16);
@@ -651,7 +682,7 @@ function UpcomingPanel({ data, onChange }: { data: any; onChange: () => void }) 
                   {o.status === "moved" ? <p className="text-xs text-muted-foreground">Moved from its usual date</p> : null}
                   {o.status === "skipped" ? <p className="text-xs text-muted-foreground">Skipped, no reminders</p> : null}
                 </div>
-                {o.status === "cancelled" ? null : (
+                {o.status === "cancelled" || readOnly ? null : (
                   <div className="flex gap-2">
                     {o.status === "scheduled" ? (
                       <>

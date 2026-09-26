@@ -54,12 +54,18 @@ export const Route = createFileRoute("/api/public/hooks/sms-opt-out-webhook")({
         const rawBody = await request.text();
         const params = new URLSearchParams(rawBody);
         const signatureHeader = request.headers.get("x-twilio-signature");
-        const ok = validateTwilioFormSignature({
-          authToken,
-          signatureHeader,
-          url: request.url,
-          params,
-        });
+        // Twilio signs the exact public address it called (the messaging
+        // service's inbound URL). Behind the hosting edge request.url can
+        // differ, so the signature is checked against each known address.
+        const candidates = new Set<string>([request.url]);
+        try {
+          const u = new URL(request.url);
+          const fwdHost = request.headers.get("x-forwarded-host") || request.headers.get("host");
+          candidates.add(`https://${fwdHost || u.host}${u.pathname}${u.search}`);
+        } catch { /* ignore */ }
+        candidates.add("https://thekenroecollective.com/api/public/hooks/sms-opt-out-webhook");
+        candidates.add("https://project--c5d156bb-c400-47bc-93a7-1a8a2490a6ed.lovable.app/api/public/hooks/sms-opt-out-webhook");
+        const ok = [...candidates].some((u) => validateTwilioFormSignature({ authToken, signatureHeader, url: u, params }));
         if (!ok) {
           return new Response("Invalid signature", { status: 403 });
         }
@@ -91,16 +97,43 @@ export const Route = createFileRoute("/api/public/hooks/sms-opt-out-webhook")({
           return emptyTwiml();
         }
 
-        // Reply-based RSVP: for guests who never open links, "reply YES" is the
-        // easiest answer there is. Tried before the opt-in keywords so a guest
-        // texting YES about an invitation records an RSVP rather than only
-        // re-subscribing. Unmatched numbers fall through to the old behavior.
+        // Opt-in and help keywords come right after STOP, unchanged. "yes" is
+        // not here: it is an answer first, and only re-subscribes further down.
+        if (cleaned === "start" || cleaned === "unstop") {
+          await admin.rpc("sms_mark_opt_in", { _phone: normalized });
+          return twiml(
+            "The Kenroe Collective: You are re-subscribed to event reminders. Msg & data rates may apply. For help, reply HELP. To opt-out, reply STOP.",
+          );
+        }
+        if (cleaned === "help" || cleaned === "info") {
+          return twiml(HELP_MESSAGE);
+        }
+
+        // Answers. Schedules first decides whether the reply belongs to a
+        // schedule or an event (most recent text wins, ambiguous gets a link).
+        // Its confirmation goes out through the outbox, so the TwiML is empty.
         {
+          const { parseReplyAnswer } = await import("@/lib/schedule-messages");
           const { parseSmsAnswer, recordSmsRsvp } = await import("@/lib/sms-rsvp.server");
+          const schedAnswer = parseReplyAnswer(body);
+          let eventKnown: import("@/lib/sms-rsvp.server").EventCandidate | null | undefined;
+          if (schedAnswer) {
+            try {
+              const { handleScheduleReply } = await import("@/lib/schedule-sms-reply.server");
+              const out = await handleScheduleReply(admin as any, from, schedAnswer);
+              if (out.route !== "event") {
+                if (schedAnswer === "yes") await admin.rpc("sms_mark_opt_in", { _phone: normalized });
+                return emptyTwiml();
+              }
+              eventKnown = out.event;
+            } catch (e) {
+              console.error("schedule sms reply failed", e);
+            }
+          }
           const answer = parseSmsAnswer(body);
           if (answer) {
             try {
-              const rsvp = await recordSmsRsvp(admin, from, answer);
+              const rsvp = await recordSmsRsvp(admin, from, answer, eventKnown);
               if (rsvp.matched && rsvp.reply) {
                 if (answer === "yes") await admin.rpc("sms_mark_opt_in", { _phone: normalized });
                 return twiml(rsvp.reply);
@@ -111,15 +144,11 @@ export const Route = createFileRoute("/api/public/hooks/sms-opt-out-webhook")({
           }
         }
 
-        if (cleaned === "start" || cleaned === "unstop" || cleaned === "yes") {
+        if (cleaned === "yes") {
           await admin.rpc("sms_mark_opt_in", { _phone: normalized });
           return twiml(
             "The Kenroe Collective: You are re-subscribed to event reminders. Msg & data rates may apply. For help, reply HELP. To opt-out, reply STOP.",
           );
-        }
-
-        if (cleaned === "help" || cleaned === "info") {
-          return twiml(HELP_MESSAGE);
         }
 
         // Any other inbound reply is a real person messaging Christopher.

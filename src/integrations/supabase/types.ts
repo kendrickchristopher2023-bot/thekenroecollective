@@ -3677,6 +3677,131 @@ export type Database = {
           },
         ]
       }
+      schedule_host_notices: {
+        Row: {
+          answers_through: string | null
+          body: string | null
+          bucket: string
+          channel: string
+          created_at: string
+          error: string | null
+          id: string
+          kind: string
+          occurrence_id: string | null
+          owner_user_id: string
+          schedule_id: string
+          sent_at: string | null
+          sms_outbox_id: string | null
+          status: string
+          to_address: string | null
+          updated_at: string
+        }
+        Insert: {
+          answers_through?: string | null
+          body?: string | null
+          bucket: string
+          channel: string
+          created_at?: string
+          error?: string | null
+          id?: string
+          kind: string
+          occurrence_id?: string | null
+          owner_user_id: string
+          schedule_id: string
+          sent_at?: string | null
+          sms_outbox_id?: string | null
+          status?: string
+          to_address?: string | null
+          updated_at?: string
+        }
+        Update: {
+          answers_through?: string | null
+          body?: string | null
+          bucket?: string
+          channel?: string
+          created_at?: string
+          error?: string | null
+          id?: string
+          kind?: string
+          occurrence_id?: string | null
+          owner_user_id?: string
+          schedule_id?: string
+          sent_at?: string | null
+          sms_outbox_id?: string | null
+          status?: string
+          to_address?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_host_notices_occurrence_id_fkey"
+            columns: ["occurrence_id"]
+            isOneToOne: false
+            referencedRelation: "schedule_occurrences"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedule_host_notices_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "schedules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      schedule_members: {
+        Row: {
+          accepted_at: string | null
+          created_at: string
+          id: string
+          invited_by: string
+          invited_email: string
+          owner_user_id: string
+          revoked_at: string | null
+          role: string
+          schedule_id: string
+          token_hash: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string
+          id?: string
+          invited_by: string
+          invited_email: string
+          owner_user_id: string
+          revoked_at?: string | null
+          role: string
+          schedule_id: string
+          token_hash: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string
+          id?: string
+          invited_by?: string
+          invited_email?: string
+          owner_user_id?: string
+          revoked_at?: string | null
+          role?: string
+          schedule_id?: string
+          token_hash?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_members_schedule_id_fkey"
+            columns: ["schedule_id"]
+            isOneToOne: false
+            referencedRelation: "schedules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       schedule_occurrences: {
         Row: {
           created_at: string
@@ -3863,6 +3988,7 @@ export type Database = {
       schedule_reminder_steps: {
         Row: {
           active: boolean
+          audience: string
           body: string
           channel: string
           created_at: string
@@ -3875,6 +4001,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          audience?: string
           body: string
           channel: string
           created_at?: string
@@ -3887,6 +4014,7 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          audience?: string
           body?: string
           channel?: string
           created_at?: string
@@ -4000,6 +4128,7 @@ export type Database = {
           host_note: string | null
           host_phone: string | null
           id: string
+          instant_channel: string
           is_demo: boolean
           join_url: string | null
           kind: string
@@ -4012,6 +4141,7 @@ export type Database = {
           source_type: string | null
           start_local: string
           status: string
+          summary_channel: string
           timezone: string
           title: string
           until_local: string | null
@@ -4037,6 +4167,7 @@ export type Database = {
           host_note?: string | null
           host_phone?: string | null
           id?: string
+          instant_channel?: string
           is_demo?: boolean
           join_url?: string | null
           kind?: string
@@ -4049,6 +4180,7 @@ export type Database = {
           source_type?: string | null
           start_local: string
           status?: string
+          summary_channel?: string
           timezone?: string
           title: string
           until_local?: string | null
@@ -4074,6 +4206,7 @@ export type Database = {
           host_note?: string | null
           host_phone?: string | null
           id?: string
+          instant_channel?: string
           is_demo?: boolean
           join_url?: string | null
           kind?: string
@@ -4086,6 +4219,7 @@ export type Database = {
           source_type?: string | null
           start_local?: string
           status?: string
+          summary_channel?: string
           timezone?: string
           title?: string
           until_local?: string | null
@@ -4201,7 +4335,7 @@ export type Database = {
           body: string
           created_at?: string
           error?: string | null
-          event_id: string
+          event_id?: string
           guest_id?: string | null
           guest_name?: string | null
           id?: string
@@ -5414,6 +5548,7 @@ export type Database = {
         Returns: boolean
       }
       can_use_schedules: { Args: { _uid: string }; Returns: boolean }
+      can_view_schedule: { Args: { _sid: string }; Returns: boolean }
       cancel_account_deletion: { Args: never; Returns: boolean }
       check_auth_rate_limit: {
         Args: { _key: string; _max?: number; _window_minutes?: number }
@@ -5513,6 +5648,7 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      cohost_can_see_contact: { Args: { _cid: string }; Returns: boolean }
       consume_ai_credit: {
         Args: { _pass_id: string; _user: string }
         Returns: number
@@ -5977,6 +6113,7 @@ export type Database = {
         Args: { _rfq_id: string; _user_id: string }
         Returns: boolean
       }
+      schedule_member_role: { Args: { _sid: string }; Returns: string }
       sms_mark_opt_in: { Args: { _phone: string }; Returns: undefined }
       sms_mark_opt_out: { Args: { _phone: string }; Returns: undefined }
       sound_share_suffix: { Args: never; Returns: string }

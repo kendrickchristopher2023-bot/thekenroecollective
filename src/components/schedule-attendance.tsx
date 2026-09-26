@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { addRsvpLinkToSteps, getAttendanceReport, setRsvpByHost } from "@/lib/schedules.functions";
+import { addRsvpLinkToSteps, getAttendanceHistory, getAttendanceReport, setRsvpByHost } from "@/lib/schedules.functions";
 import { toUserMessage } from "@/lib/user-error";
 
 type Answer = "yes" | "maybe" | "no" | "none";
@@ -27,7 +27,7 @@ function csvCell(v: unknown) {
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
-export function AttendanceReport({ scheduleId }: { scheduleId: string }) {
+export function AttendanceReport({ scheduleId, canEdit = true }: { scheduleId: string; canEdit?: boolean }) {
   const load = useServerFn(getAttendanceReport);
   const setAnswer = useServerFn(setRsvpByHost);
   const [occurrenceId, setOccurrenceId] = useState<string | null>(null);
@@ -108,11 +108,13 @@ export function AttendanceReport({ scheduleId }: { scheduleId: string }) {
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium">{r.name}</p>
               {r.note ? <p className="text-xs text-muted-foreground">"{r.note}"</p> : null}
-              {r.source === "host" ? <p className="text-xs text-muted-foreground">Set by you</p> : null}
+              {r.source === "host" ? <p className="text-xs text-muted-foreground">Set by a host</p> : r.source === "sms" ? <p className="text-xs text-muted-foreground">Answered by text</p> : null}
             </div>
-            <select className="rounded-xl border border-ink/10 bg-background px-2 py-1.5 text-sm" value={r.answer} onChange={(e) => void change(r.personId, e.target.value as Answer)} aria-label={`Answer for ${r.name}`}>
-              {ORDER.map((a) => <option key={a} value={a}>{ANSWER_LABEL[a]}</option>)}
-            </select>
+            {canEdit ? (
+              <select className="rounded-xl border border-ink/10 bg-background px-2 py-1.5 text-sm" value={r.answer} onChange={(e) => void change(r.personId, e.target.value as Answer)} aria-label={`Answer for ${r.name}`}>
+                {ORDER.map((a) => <option key={a} value={a}>{ANSWER_LABEL[a]}</option>)}
+              </select>
+            ) : <span className={`self-start rounded-full px-2.5 py-0.5 text-xs ${TONE[r.answer as Answer]}`}>{ANSWER_LABEL[r.answer as Answer]}</span>}
           </li>
         ))}
         {!shown.length ? <li className="px-4 py-6 text-center text-sm text-muted-foreground">Nobody matches.</li> : null}
@@ -139,5 +141,59 @@ export function RsvpSuggestion({ scheduleId, steps, onDone }: { scheduleId: stri
           finally { setBusy(false); }
         }}>Add RSVP link to my messages</button>
     </div>
+  );
+}
+
+const SHORT: Record<Answer, string> = { yes: "Will", maybe: "May", no: "Cannot", none: "No answer" };
+
+export function AttendanceHistory({ scheduleId }: { scheduleId: string }) {
+  const load = useServerFn(getAttendanceHistory);
+  const [data, setData] = useState<any | null>(null);
+  const [onlyQuiet, setOnlyQuiet] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  useEffect(() => { void load({ data: { id: scheduleId } }).then(setData).catch((e) => setErr(toUserMessage(e))); }, [load, scheduleId]);
+  if (err) return <p className="rounded-2xl bg-destructive/10 p-4 text-sm text-destructive">{err}</p>;
+  if (!data) return null;
+  const rows: any[] = data.rows ?? [];
+  const quiet = rows.filter((r) => r.quiet3).length;
+  const shown = onlyQuiet ? rows.filter((r) => r.quiet3) : rows;
+  const day = (iso: string) => new Date(iso).toLocaleDateString("en-US", { timeZone: data.timezone, month: "short", day: "numeric" });
+  return (
+    <section className="space-y-4 rounded-3xl bg-card p-6 ring-1 ring-ink/5 sm:p-8">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 className="font-serif text-xl">History</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Answers on past dates, up to the last 12.</p>
+        </div>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" className="h-4 w-4" checked={onlyQuiet} onChange={(e) => setOnlyQuiet(e.target.checked)} />
+          No answer for the last 3 dates ({quiet})
+        </label>
+      </div>
+      {!data.dates.length ? <p className="text-sm text-muted-foreground">No past dates yet.</p> : (
+        <div className="overflow-x-auto rounded-2xl ring-1 ring-ink/5">
+          <table className="w-full min-w-max text-sm">
+            <thead className="bg-secondary/60 text-xs text-muted-foreground">
+              <tr>
+                <th className="sticky left-0 bg-secondary/60 px-3 py-2 text-left font-medium">Person</th>
+                {data.dates.map((d: any) => <th key={d.id} className="px-3 py-2 text-left font-medium">{day(d.startsAt)}</th>)}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-ink/5">
+              {shown.map((r) => (
+                <tr key={r.personId}>
+                  <td className="sticky left-0 bg-card px-3 py-2">
+                    <span className="font-medium">{r.name}</span>
+                    {r.quiet3 ? <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-900">No answer for the last 3 dates</span> : null}
+                  </td>
+                  {r.answers.map((a: Answer, i: number) => <td key={i} className="px-3 py-2"><span className={`rounded-full px-2 py-0.5 text-xs ${TONE[a]}`}>{SHORT[a]}</span></td>)}
+                </tr>
+              ))}
+              {!shown.length ? <tr><td colSpan={data.dates.length + 1} className="px-3 py-6 text-center text-muted-foreground">Nobody matches.</td></tr> : null}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
   );
 }
