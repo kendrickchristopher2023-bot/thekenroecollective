@@ -1208,3 +1208,188 @@ export const addRsvpLinkToSteps = createServerFn({ method: "POST" })
     }
     return { updated: n };
   });
+
+// ---------------- Host notices ----------------
+
+const NoticeChannel = z.enum(["off", "email", "sms", "both"]);
+
+export const saveHostNotices = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ id: z.string().uuid(), summary: NoticeChannel, instant: NoticeChannel }).parse(d))
+  .handler(async ({ data, context }) => {
+    const sb = context.supabase as any;
+    await ownedSchedule(sb, data.id);
+    const { error } = await sb.from("schedules").update({ summary_channel: data.summary, instant_channel: data.instant }).eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+// ---------------- Attendance history ----------------
+
+export const getAttendanceHistory = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const sb = context.supabase as any;
+    const { s } = await scheduleAccess(context, data.id, "view");
+    const { data: past } = await sb
+      .from("schedule_occurrences")
+      .select("id,starts_at")
+      .eq("schedule_id", data.id)
+      .in("status", ["scheduled", "moved"])
+      .lt("starts_at", new Date().toISOString())
+      .order("starts_at", { ascending: false })
+      .limit(12);
+    const dates = (past ?? []).reverse();
+    const [{ data: people }, { data: rs }] = await Promise.all([
+      sb.from("schedule_people").select("id, created_at, contact:contacts(display_name,email,phone)").eq("schedule_id", data.id).is("removed_at", null).order("created_at"),
+      dates.length ? sb.from("schedule_rsvps").select("person_id,occurrence_id,answer").in("occurrence_id", dates.map((d: any) => d.id)) : Promise.resolve({ data: [] }),
+    ]);
+    const { attendanceHistoryRows } = await import("@/lib/schedule-history");
+    return {
+      timezone: s.timezone as string,
+      dates: dates.map((d: any) => ({ id: d.id, startsAt: d.starts_at })),
+      rows: attendanceHistoryRows(dates, people ?? [], rs ?? []),
+    };
+  });
+
+// ---------------- Co-hosts ----------------
+
+const RESERVED_EMAIL = /@(example\.(com|org|net)|[^@]+\.(test|invalid|example|localhost))$/i;
+
+export const listCohosts = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const sb = context.supabase as any;
+    await ownedSchedule(sb, data.id);
+    const { data: rows, error } = await sb
+      .from("schedule_members")
+      .select("id, invited_email, role, accepted_at, revoked_at, created_at")
+      .eq("schedule_id", data.id)
+      .is("revoked_at", null)
+      .order("created_at");
+    if (error) throw new Error(error.message);
+    return rows ?? [];
+  });
+
+export const inviteCohost = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ id: z.string().uuid(), email: z.string().trim().max(254), role: z.enum(["view", "edit"]) }).parse(d))
+  .handler(async ({ data, context }) => {
+    const sb = context.supabase as any;
+    const s = await ownedSchedule(sb, data.id);
+    const { validEmail } = await import("@/lib/contact-import.server");
+    const email = data.email.trim().toLowerCase();
+    if (!validEmail(email)) throw new Error("That email doesn't look right.");
+    const mine = String((context.claims as any)?.email ?? "").toLowerCase();
+    if (email === mine) throw new Error("That is your own email. You already own this schedule.");
+    const { randomBytes, createHash } = await import("crypto");
+    const token = randomBytes(24).toString("hex");
+    const token_hash = createHash("sha256").update(token).digest("hex");
+    const { data: row, error } = await sb
+      .from("schedule_members")
+      .insert({ schedule_id: data.id, owner_user_id: context.userId, invited_email: email, role: data.role, token_hash, invited_by: context.userId })
+      .select("id")
+      .single();
+    if (error) {
+      if (/duplicate|unique/i.test(error.message)) throw new Error("That person already has an invitation to this schedule.");
+      throw new Error(error.message);
+    }
+    const { SCHEDULE_SITE_ORIGIN } = await import("@/lib/schedules-engine.server");
+    const url = `${SCHEDULE_SITE_ORIGIN}/schedules/join/${token}`;
+    let emailed = false;
+    let note: string | null = null;
+    const { isDemoCaller } = await import("@/lib/demo-mode.server");
+    if (RESERVED_EMAIL.test(email)) note = "test_address";
+    else if (await isDemoCaller(context as any).catch(() => true)) note = "demo";
+    else {
+      const { data: prof } = await sb.from("profiles").select("display_name").eq("id", context.userId).maybeSingle();
+      const who = prof?.display_name || "A Kenroe host";
+      const { enqueueTransactionalEmailServer } = await import("@/lib/email/server-enqueue.server");
+      const r = await enqueueTransactionalEmailServer({
+        templateName: "contact-broadcast",
+        recipientEmail: email,
+        idempotencyKey: `sched-cohost-${row.id}`,
+        label: "schedule_cohost_invite",
+        fromName: who,
+        templateData: {
+          subject: `${who} invited you to help with ${s.title}`,
+          body: `${who} invited you to ${data.role === "edit" ? "help manage the people and messages for" : "see the attendance report for"} ${s.title}.\n\nSign in with this email address (${email}) to accept.`,
+          senderName: who,
+          ctaUrl: url,
+          ctaLabel: "Open the invitation",
+        },
+      });
+      emailed = r.ok && r.reason !== "demo";
+      if (!emailed) note = r.reason ?? "email_failed";
+    }
+    return { id: row.id as string, url, emailed, note };
+  });
+
+export const revokeCohost = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ id: z.string().uuid(), memberId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const sb = context.supabase as any;
+    await ownedSchedule(sb, data.id);
+    const { data: rows, error } = await sb.from("schedule_members").update({ revoked_at: new Date().toISOString() }).eq("id", data.memberId).eq("schedule_id", data.id).select("id");
+    if (error) throw new Error(error.message);
+    if (!rows?.length) throw new Error("That co-host was not found.");
+    return { ok: true };
+  });
+
+const INVITE_TOKEN = z.string().regex(/^[a-f0-9]{48}$/);
+
+async function inviteByToken(token: string) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { createHash } = await import("crypto");
+  const token_hash = createHash("sha256").update(token).digest("hex");
+  const { data } = await (supabaseAdmin as any).from("schedule_members").select("*").eq("token_hash", token_hash).maybeSingle();
+  return { admin: supabaseAdmin as any, m: data as any };
+}
+
+function maskEmail(e: string) {
+  const [u, d] = e.split("@");
+  return `${(u ?? "").slice(0, 1)}${"*".repeat(Math.max(1, (u ?? "").length - 1))}@${d ?? ""}`;
+}
+
+export const getCohostInvite = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ token: INVITE_TOKEN }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { admin, m } = await inviteByToken(data.token);
+    if (!m || m.revoked_at) return { state: "invalid" as const };
+    const me = String((context.claims as any)?.email ?? "").toLowerCase();
+    if (m.accepted_at) return { state: m.user_id === context.userId ? ("accepted" as const) : ("used" as const), scheduleId: m.user_id === context.userId ? m.schedule_id : null };
+    if (me !== m.invited_email.toLowerCase()) return { state: "wrong_email" as const, forEmail: maskEmail(m.invited_email) };
+    const [{ data: s }, { data: prof }] = await Promise.all([
+      admin.from("schedules").select("title").eq("id", m.schedule_id).maybeSingle(),
+      admin.from("profiles").select("display_name").eq("id", m.owner_user_id).maybeSingle(),
+    ]);
+    return { state: "ready" as const, title: s?.title ?? "A schedule", ownerName: prof?.display_name ?? "The owner", role: m.role as "view" | "edit" };
+  });
+
+export const acceptCohostInvite = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ token: INVITE_TOKEN }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { admin, m } = await inviteByToken(data.token);
+    if (!m || m.revoked_at) throw new Error("This invitation is no longer active.");
+    if (m.owner_user_id === context.userId) throw new Error("You already own this schedule.");
+    if (m.accepted_at) {
+      if (m.user_id === context.userId) return { scheduleId: m.schedule_id as string };
+      throw new Error("This invitation has already been used.");
+    }
+    const me = String((context.claims as any)?.email ?? "").toLowerCase();
+    if (!me || me !== String(m.invited_email).toLowerCase()) throw new Error(`This invitation is for ${maskEmail(m.invited_email)}. Sign in with that email to accept.`);
+    const { data: upd, error } = await admin
+      .from("schedule_members")
+      .update({ user_id: context.userId, accepted_at: new Date().toISOString() })
+      .eq("id", m.id)
+      .is("accepted_at", null)
+      .is("revoked_at", null)
+      .select("schedule_id");
+    if (error || !upd?.length) throw new Error("This invitation could not be accepted. Please ask for a new one.");
+    return { scheduleId: upd[0].schedule_id as string };
+  });
