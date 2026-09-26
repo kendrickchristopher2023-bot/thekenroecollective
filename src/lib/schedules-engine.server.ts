@@ -23,6 +23,8 @@ import {
   prettyPhone,
   normalizeJoinUrl,
   DEFAULT_MANUAL_SMS,
+  scheduleJoinDetails,
+  scheduleJoinLines,
 } from "@/lib/schedule-messages";
 import { phoneKeys, canonicalPhone } from "@/lib/phone-keys";
 import { eventInstant, eventTimeZone } from "@/lib/datetime";
@@ -38,10 +40,8 @@ type Admin = SupabaseClient<any, any, any>;
 
 /** Make legacy host-entered links tappable without letting one bad saved value break a send. */
 export function safeJoinValue(s: any): string {
-  if (s.join_url) {
-    try { return normalizeJoinUrl(s.join_url) || ""; } catch { return ""; }
-  }
-  return [s.dial_in, s.dial_pin ? `PIN ${s.dial_pin}` : ""].filter(Boolean).join(" ") || s.location || "";
+  const d = scheduleJoinDetails(s);
+  return d.join || [d.dialIn, d.dialPin ? `PIN ${d.dialPin}` : ""].filter(Boolean).join(" ") || d.location;
 }
 
 /** Rebuild occurrences from now - 1 day to now + 90 days. */
@@ -199,6 +199,8 @@ export function mergeValues(s: any, person: any, startsAt: Date, host: string) {
     title: s.title,
     when: whenLabel(startsAt, s.timezone),
     join: safeJoinValue(s),
+    meeting_id: s.meeting_id,
+    passcode: s.meeting_passcode,
     description: s.description,
     // Texts get the short links; emails swap in their own below.
     ...textLinks(person),
@@ -213,14 +215,26 @@ export function mergeValues(s: any, person: any, startsAt: Date, host: string) {
 
 /** The exact text a person receives: first-text intro, message, host line, STOP line. */
 export function finalSmsBody(template: string, values: ReturnType<typeof mergeValues>, person: any, host: string, leadLabel?: string | null) {
+  const rendered = renderTemplate(template, values);
+  const required = [
+    ...scheduleJoinLines({ join_url: values.join, meeting_id: values.meeting_id, meeting_passcode: values.passcode }),
+    values.rsvp ? `RSVP: ${values.rsvp}` : "",
+  ].filter(Boolean);
+  let freeText = rendered;
+  for (const line of required) {
+    const value = line.slice(line.indexOf(":") + 1).trim();
+    freeText = freeText.replace(line, "").replace(value, "");
+  }
+  freeText = freeText.replace(/(^|\n)\s*(Join(?: meeting)?|RSVP|Meeting ID|Passcode):\s*(?=\n|$)/gi, "$1").replace(/\n{3,}/g, "\n\n").trim();
   return composeScheduleSms({
     title: values.title,
-    message: renderTemplate(template, values),
+    message: freeText,
     hostLine: values._hostLine,
     hostName: host,
     firstText: !person.first_sms_sent_at,
     // Welcome texts pass null here: they are not reminders.
     leadLabel,
+    protectedLines: required,
   });
 }
 
@@ -235,6 +249,9 @@ export function scheduleEmailData(s: any, person: any, values: ReturnType<typeof
     ctaUrl: calendarLink(person.rsvp_token),
     ctaLabel: "Add to calendar",
     rsvpUrl: personPageLink(person.rsvp_token),
+    joinUrl: scheduleJoinDetails(s).join || null,
+    meetingId: String(s.meeting_id || "").trim() || null,
+    meetingPasscode: String(s.meeting_passcode || "").trim() || null,
     hostName: h ? h.name || host : null,
     hostPhone: h?.phone || null,
     hostPhoneLabel: h?.phone ? prettyPhone(h.phone) : null,
@@ -305,7 +322,7 @@ export async function deliverClaimed(args: {
   }
 
   const body = args.plain
-    ? spaceLinkPunctuation(renderTemplate(args.body, values)).slice(0, 320)
+    ? finalSmsBody(args.body, values, person, hostName, null)
     : finalSmsBody(args.body, values, person, hostName, args.leadLabel);
   // A dry run counts toward the daily cap too, so it predicts real holds.
   if (dryRun) { owners.smsToday.set(s.owner_user_id, used + 1); return mark("dry_run"); }
@@ -605,6 +622,8 @@ export function prefill(tpl: string, s: any, startsAt: Date, host: string): stri
     title: s.title || "Our call",
     when: whenLabel(startsAt, s.timezone),
     join: safeJoinValue(s) || "see the invitation",
+    meeting_id: s.meeting_id || "",
+    passcode: s.meeting_passcode || "",
     description: s.description || "",
     host,
     host_name: s.host_name || host,
@@ -612,7 +631,7 @@ export function prefill(tpl: string, s: any, startsAt: Date, host: string): stri
     host_email: s.host_email || "",
     host_note: s.host_note || "",
   };
-  return tpl.replace(/\{(title|when|join|description|host_name|host_phone|host_email|host_note|host)\}/g, (_m, k: string) => map[k] ?? _m);
+  return tpl.replace(/\{(title|when|join|meeting_id|passcode|description|host_name|host_phone|host_email|host_note|host)\}/g, (_m, k: string) => map[k] ?? _m);
 }
 
 /** The step for this date whose send time is closest to now, per channel. */
