@@ -210,6 +210,7 @@ export function mergeValues(s: any, person: any, startsAt: Date, host: string) {
     host_email: h?.email || "",
     host_note: h?.note || "",
     _hostLine: hostSmsLine(h),
+    _joinLines: scheduleJoinLines(s),
   };
 }
 
@@ -217,7 +218,7 @@ export function mergeValues(s: any, person: any, startsAt: Date, host: string) {
 export function finalSmsBody(template: string, values: ReturnType<typeof mergeValues>, person: any, host: string, leadLabel?: string | null) {
   const rendered = renderTemplate(template, values);
   const required = [
-    ...scheduleJoinLines({ join_url: values.join, meeting_id: values.meeting_id, meeting_passcode: values.passcode }),
+    ...values._joinLines,
     values.rsvp ? `RSVP: ${values.rsvp}` : "",
   ].filter(Boolean);
   let freeText = rendered;
@@ -241,17 +242,25 @@ export function finalSmsBody(template: string, values: ReturnType<typeof mergeVa
 /** Everything the email template gets: message, calendar button, RSVP link and the host contact block. */
 export function scheduleEmailData(s: any, person: any, values: ReturnType<typeof mergeValues>, subject: string | null, body: string, host: string) {
   const h = hostFromSchedule(s);
+  const explicitMeetingId = body.includes("{meeting_id}");
+  const explicitPasscode = body.includes("{passcode}");
+  const emailValues = {
+    ...values,
+    meeting_id: explicitMeetingId ? values.meeting_id : "",
+    passcode: explicitPasscode ? values.passcode : "",
+    description: String(values.description || "").split("\n").filter((line) => !/^\s*(meeting id|passcode)\s*:/i.test(line)).join("\n"),
+  };
   return {
     subject: renderTemplate(subject || "Reminder: {title}", values),
     // Emails hide links behind words: {rsvp} becomes a "Will you be there?" link, {calendar} the long link.
-    body: renderTemplate(body, { ...values, rsvp: EMAIL_RSVP_MARK, calendar: calendarLink(person.rsvp_token) }),
+    body: renderTemplate(body, { ...emailValues, rsvp: EMAIL_RSVP_MARK, calendar: calendarLink(person.rsvp_token) }),
     senderName: host,
     ctaUrl: calendarLink(person.rsvp_token),
     ctaLabel: "Add to calendar",
     rsvpUrl: personPageLink(person.rsvp_token),
     joinUrl: scheduleJoinDetails(s).join || null,
-    meetingId: String(s.meeting_id || "").trim() || null,
-    meetingPasscode: String(s.meeting_passcode || "").trim() || null,
+    meetingId: explicitMeetingId ? null : String(s.meeting_id || "").trim() || null,
+    meetingPasscode: explicitPasscode ? null : String(s.meeting_passcode || "").trim() || null,
     hostName: h ? h.name || host : null,
     hostPhone: h?.phone || null,
     hostPhoneLabel: h?.phone ? prettyPhone(h.phone) : null,

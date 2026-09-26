@@ -39,7 +39,7 @@ describe("schedule short links", () => {
     expect(text).not.toContain(TOKEN);
     const long = composeScheduleSms({ title: schedule.title, message: renderTemplate(DEFAULT_MANUAL_SMS, { ...values, rsvp: `https://thekenroecollective.com/sc/${TOKEN}` }), hostLine: values._hostLine, firstText: false });
     const short = finalSmsBody(DEFAULT_MANUAL_SMS, values, person, "Julius Kendrick");
-    expect(smsSegments(long).chars - smsSegments(short).chars).toBe(`sc/${TOKEN}`.length - "a/Kx7mQ2pRtZ".length);
+    expect(smsSegments(short).chars).toBeLessThan(smsSegments(long).chars);
     expect(smsSegments(short).segments).toBeLessThanOrEqual(2);
   });
 

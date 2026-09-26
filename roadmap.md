@@ -1,5 +1,10 @@
 # Roadmap: demo safety, showcase lock, first-time example
 
+## Current Schedules meeting-credentials update
+- [x] Add dedicated Meeting ID and Passcode storage and migrate the approved reunion values only.
+- [ ] Enforce credentials across texts, emails, personal pages, calendars, and previews.
+- [ ] Verify protected truncation, dry-run rendering, unchanged outbox, compatibility, and desktop/phone presentation.
+
 ## Urgent before Sunday family demo (12 Sep)
 - [x] Kept the exact title “The Kendrick Family Reunion”. Replaced every person inside `demo-reunion-200` and `demo-evt-supper` with invented people, using fictional Kendrick relatives and in-laws for the reunion. Preserved example.com emails and 555-01xx phones.
 - [x] Replaced both events’ cover/host/wall photos with generated fictional imagery and removed personal-folder pointers. Updated live rows, nightly snapshots, and seed source.
