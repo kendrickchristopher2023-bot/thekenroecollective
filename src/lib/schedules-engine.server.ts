@@ -223,7 +223,7 @@ export function finalSmsBody(template: string, values: ReturnType<typeof mergeVa
   let freeText = rendered;
   for (const line of required) {
     const value = line.slice(line.indexOf(":") + 1).trim();
-    freeText = freeText.replace(line, "").replace(value, "");
+    freeText = freeText.includes(line) ? freeText.replace(line, "") : freeText.replace(value, "");
   }
   freeText = freeText.replace(/(^|\n)\s*(Join(?: meeting)?|RSVP|Meeting ID|Passcode):\s*(?=\n|$)/gi, "$1").replace(/\n{3,}/g, "\n\n").trim();
   return composeScheduleSms({
