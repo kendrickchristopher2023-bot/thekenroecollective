@@ -4136,6 +4136,8 @@ export type Database = {
           join_url: string | null
           kind: string
           location: string | null
+          meeting_id: string | null
+          meeting_passcode: string | null
           occurrence_count: number | null
           owner_user_id: string
           parent_schedule_id: string | null
@@ -4175,6 +4177,8 @@ export type Database = {
           join_url?: string | null
           kind?: string
           location?: string | null
+          meeting_id?: string | null
+          meeting_passcode?: string | null
           occurrence_count?: number | null
           owner_user_id: string
           parent_schedule_id?: string | null
@@ -4214,6 +4218,8 @@ export type Database = {
           join_url?: string | null
           kind?: string
           location?: string | null
+          meeting_id?: string | null
+          meeting_passcode?: string | null
           occurrence_count?: number | null
           owner_user_id?: string
           parent_schedule_id?: string | null
