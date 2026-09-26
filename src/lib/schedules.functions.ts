@@ -1114,6 +1114,25 @@ export const getPersonPage = createServerFn({ method: "GET" })
     };
   });
 
+/** Short link from a text: same page as the long link, plus the token the page needs to save answers. */
+export const getPersonPageByCode = createServerFn({ method: "GET" })
+  .inputValidator((d: unknown) => z.object({ code: z.string().regex(/^[2-9A-HJ-NP-Za-km-z]{10}$/) }).parse(d))
+  .handler(async ({ data }) => {
+    const { getRequest } = await import("@tanstack/react-start/server");
+    const { checkRateLimit, getClientIp } = await import("@/lib/rate-limit.server");
+    let ip = "unknown";
+    try { ip = getClientIp(getRequest()); } catch { /* no request in tests */ }
+    if (!checkRateLimit(ip, { scope: "schedule-short-page", max: 20, windowMs: 60_000 }).allowed) {
+      throw new Error("Too many tries. Please wait a minute and open the link again.");
+    }
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: p } = await (supabaseAdmin as any).from("schedule_people").select("rsvp_token,removed_at").eq("short_code", data.code).maybeSingle();
+    if (!p || p.removed_at) return null;
+    const page = await getPersonPage({ data: { token: p.rsvp_token } });
+    if (!page) return null;
+    return { page, token: p.rsvp_token as string };
+  });
+
 const RSVP_LIMIT = 10; // answers per token per 10 minutes
 
 export const submitRsvp = createServerFn({ method: "POST" })
