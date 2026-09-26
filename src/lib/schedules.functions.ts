@@ -15,8 +15,8 @@ async function assertCanUse(supabase: any) {
   if (data !== true) throw new Error(PLAN_ERROR);
 }
 
-async function ownedSchedule(supabase: any, id: string) {
-  const { data, error } = await supabase.from("schedules").select("*").eq("id", id).maybeSingle();
+async function ownedSchedule(sb: any, id: string) {
+  const { data, error } = await sb.from("schedules").select("*").eq("id", id).maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Schedule not found.");
   return data as any;
