@@ -55,7 +55,7 @@ const WELCOME = { welcome_enabled: true, welcome_at: at("2027-03-03T18:00").toIS
 try {
   const outboxBefore = (await admin.from("sms_outbox").select("id", { count: "exact", head: true })).count;
   const owner = await mkUser("owner"); cleanup.users.push(owner.id);
-  await admin.from("subscriptions").insert({ user_id: owner.id, product_id: "manual_atelier_test", price_id: "manual", status: "active", stripe_subscription_id: `manual_test_${Date.now()}`, stripe_customer_id: "manual_test", environment: "sandbox" });
+  await admin.from("subscriptions").insert({ user_id: owner.id, product_id: "manual_atelier_test", price_id: "atelier_monthly", status: "active", stripe_subscription_id: `manual_test_${Date.now()}`, stripe_customer_id: "manual_test", environment: "sandbox" });
   const s = await mkSchedule(owner.id, "Welcome Test Call", WELCOME); cleanup.schedules.push(s.id);
   const A = await addPerson(owner.id, s.id, "Ann Example", "+12025550101", "ann@example.com", "both", true);
   const B = await addPerson(owner.id, s.id, "Bo Optout", "+12025550102", "bo@example.com", "both", true);
