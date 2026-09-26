@@ -47,7 +47,27 @@ const ScheduleInput = z.object({
   occurrence_count: z.number().int().min(1).max(1000).nullable().optional(),
   source_type: z.enum(["event", "project"]).nullable().optional(),
   source_id: z.string().max(100).nullable().optional(),
+  host_name: z.string().trim().max(100).nullable().optional(),
+  host_phone: z.string().trim().max(40).nullable().optional(),
+  host_email: z.string().trim().max(254).nullable().optional(),
+  host_note: z.string().trim().max(200).nullable().optional(),
 });
+
+/** Host details are shown to everyone on the list, so they are cleaned the same way as imports. */
+async function cleanHost(v: any) {
+  const { toE164, validEmail } = await import("@/lib/contact-import.server");
+  const out: any = { host_name: v.host_name?.trim() || null, host_note: v.host_note?.trim() || null, host_phone: null, host_email: null };
+  if (v.host_phone?.trim()) {
+    const ph = toE164(v.host_phone);
+    if (!ph) throw new Error("The host phone number doesn't look right. Use a 10-digit US number.");
+    out.host_phone = ph;
+  }
+  if (v.host_email?.trim()) {
+    if (!validEmail(v.host_email.trim())) throw new Error("The host email doesn't look right.");
+    out.host_email = v.host_email.trim().toLowerCase();
+  }
+  return out;
+}
 
 function cleanRule(rule: string | null) {
   if (!rule) return null;
@@ -127,7 +147,7 @@ export const saveSchedule = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const sb = context.supabase as any;
     await assertCanUse(sb);
-    const v = { ...data.values, rrule: cleanRule(data.values.rrule) };
+    const v: any = { ...data.values, rrule: cleanRule(data.values.rrule), ...(await cleanHost(data.values)) };
     if (v.ends_kind !== "on_date") v.until_local = null;
     if (v.ends_kind !== "count") v.occurrence_count = null;
     if (!v.rrule) { v.ends_kind = "count"; v.occurrence_count = 1; v.until_local = null; }
@@ -850,32 +870,6 @@ export const runScheduleEngine = createServerFn({ method: "POST" })
     return engine.runTick(supabaseAdmin as any, { dryRun: data.dryRun, ownerUserId: context.userId });
   });
 
-export const getPersonPage = createServerFn({ method: "GET" })
-  .inputValidator((d: unknown) => z.object({ token: z.string().regex(/^[a-f0-9]{48}$/) }).parse(d))
-  .handler(async ({ data }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const admin = supabaseAdmin as any;
-    const { data: p } = await admin.from("schedule_people").select("schedule_id,removed_at,contact:contacts(display_name)").eq("rsvp_token", data.token).maybeSingle();
-    if (!p || p.removed_at) return null;
-    const { data: s } = await admin.from("schedules").select("title,kind,timezone,join_url,dial_in,dial_pin,location,rrule,start_local,duration_minutes,ends_kind,until_local,occurrence_count,description").eq("id", p.schedule_id).maybeSingle();
-    if (!s) return null;
-    const { data: next } = await admin.from("schedule_occurrences").select("starts_at").eq("schedule_id", p.schedule_id).in("status", ["scheduled", "moved"]).gte("ends_at", new Date().toISOString()).order("starts_at").limit(1);
-    return {
-      firstName: String(p.contact?.display_name ?? "").split(/\s+/)[0] || "",
-      title: s.title,
-      kind: s.kind,
-      timezone: s.timezone,
-      joinUrl: s.join_url,
-      dialIn: s.dial_in,
-      dialPin: s.dial_pin,
-      location: s.location,
-      description: s.description,
-      rrule: s.rrule,
-      nextAt: next?.[0]?.starts_at ?? null,
-      schedule: { start_local: s.start_local, timezone: s.timezone, duration_minutes: s.duration_minutes, rrule: s.rrule, ends_kind: s.ends_kind, until_local: s.until_local, occurrence_count: s.occurrence_count },
-    };
-  });
-
 /** Cancel an import: delete the uploaded file now and mark the import discarded. */
 export const discardContactImport = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -983,4 +977,167 @@ export const saveWelcome = createServerFn({ method: "POST" })
     }).eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
+  });
+
+
+// ---------------- Host details, RSVP and attendance ----------------
+
+/** Owner's own name, phone and email, used to prefill host details on a new schedule. */
+export const getHostDefaults = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data: prof } = await (context.supabase as any).from("profiles").select("display_name, phone").eq("id", context.userId).maybeSingle();
+    return {
+      host_name: (prof?.display_name as string) || "",
+      host_phone: (prof?.phone as string) || "",
+      host_email: String((context.claims as any)?.email ?? ""),
+    };
+  });
+
+const TOKEN = z.string().regex(/^[a-f0-9]{48}$/);
+
+async function personByToken(admin: any, token: string) {
+  const { data: p } = await admin.from("schedule_people").select("id,schedule_id,removed_at,contact:contacts(display_name)").eq("rsvp_token", token).maybeSingle();
+  if (!p || p.removed_at) return null;
+  return p;
+}
+
+export const getPersonPage = createServerFn({ method: "GET" })
+  .inputValidator((d: unknown) => z.object({ token: TOKEN }).parse(d))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const admin = supabaseAdmin as any;
+    const p = await personByToken(admin, data.token);
+    if (!p) return null;
+    const { data: s } = await admin.from("schedules").select("title,kind,timezone,join_url,dial_in,dial_pin,location,description,host_name,host_phone,host_email,host_note,status").eq("id", p.schedule_id).maybeSingle();
+    if (!s) return null;
+    // The next date that has not ended yet; if none, the most recent one so a past answer still shows.
+    const nowIso = new Date().toISOString();
+    let { data: occ } = await admin.from("schedule_occurrences").select("id,starts_at,ends_at").eq("schedule_id", p.schedule_id).in("status", ["scheduled", "moved"]).gte("ends_at", nowIso).order("starts_at").limit(1);
+    if (!occ?.length) ({ data: occ } = await admin.from("schedule_occurrences").select("id,starts_at,ends_at").eq("schedule_id", p.schedule_id).in("status", ["scheduled", "moved"]).order("starts_at", { ascending: false }).limit(1));
+    const o = occ?.[0] ?? null;
+    const { data: r } = o ? await admin.from("schedule_rsvps").select("answer,note").eq("occurrence_id", o.id).eq("person_id", p.id).maybeSingle() : { data: null };
+    const { whenLabel, prettyPhone } = await import("@/lib/schedule-messages");
+    return {
+      firstName: String(p.contact?.display_name ?? "").split(/\s+/)[0] || "",
+      title: s.title as string,
+      timezone: s.timezone as string,
+      joinUrl: s.join_url as string | null,
+      dialIn: s.dial_in as string | null,
+      dialPin: s.dial_pin as string | null,
+      location: s.location as string | null,
+      description: s.description as string | null,
+      occurrenceId: (o?.id as string) ?? null,
+      nextAt: (o?.starts_at as string) ?? null,
+      nextLabel: o ? whenLabel(new Date(o.starts_at), s.timezone) : null,
+      locked: o ? new Date(o.starts_at).getTime() <= Date.now() : true,
+      answer: (r?.answer as "yes" | "maybe" | "no" | undefined) ?? null,
+      note: (r?.note as string | undefined) ?? "",
+      host: s.host_name || s.host_phone || s.host_email
+        ? { name: s.host_name as string | null, phone: s.host_phone as string | null, phoneLabel: s.host_phone ? prettyPhone(s.host_phone) : null, email: s.host_email as string | null, note: s.host_note as string | null }
+        : null,
+    };
+  });
+
+const RSVP_LIMIT = 10; // answers per token per 10 minutes
+
+export const submitRsvp = createServerFn({ method: "POST" })
+  .inputValidator((d: unknown) =>
+    z.object({ token: TOKEN, occurrenceId: z.string().uuid(), answer: z.enum(["yes", "maybe", "no"]), note: z.string().trim().max(200).optional().default("") }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const admin = supabaseAdmin as any;
+    const p = await personByToken(admin, data.token);
+    if (!p) throw new Error("This link is no longer active.");
+    const { createHash } = await import("crypto");
+    const key = createHash("sha256").update(data.token).digest("hex");
+    const win = new Date(Math.floor(Date.now() / 600_000) * 600_000).toISOString();
+    const { data: rl } = await admin.from("schedule_rsvp_rate_limit").select("hits").eq("token_hash", key).eq("window_start", win).maybeSingle();
+    if ((rl?.hits ?? 0) >= RSVP_LIMIT) throw new Error("Too many changes in a short time. Please try again in a few minutes.");
+    await admin.from("schedule_rsvp_rate_limit").upsert({ token_hash: key, window_start: win, hits: (rl?.hits ?? 0) + 1 }, { onConflict: "token_hash,window_start" });
+    // The date must belong to this person's own schedule and not have started.
+    const { data: o } = await admin.from("schedule_occurrences").select("id,schedule_id,starts_at,status").eq("id", data.occurrenceId).maybeSingle();
+    if (!o || o.schedule_id !== p.schedule_id || !["scheduled", "moved"].includes(o.status)) throw new Error("That date is no longer on the schedule.");
+    if (new Date(o.starts_at).getTime() <= Date.now()) throw new Error("This call has already started, so answers are closed.");
+    const now = new Date().toISOString();
+    const { error } = await admin.from("schedule_rsvps").upsert(
+      { schedule_id: p.schedule_id, occurrence_id: o.id, person_id: p.id, answer: data.answer, note: data.note || null, source: "link", answered_at: now },
+      { onConflict: "occurrence_id,person_id" },
+    );
+    if (error) throw new Error("We couldn't save your answer. Please try again.");
+    return { ok: true, answer: data.answer };
+  });
+
+export const getAttendanceReport = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ id: z.string().uuid(), occurrenceId: z.string().uuid().nullable() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const sb = context.supabase as any;
+    const s = await ownedSchedule(sb, data.id); // RLS proves ownership
+    const { whenLabel } = await import("@/lib/schedule-messages");
+    const nowIso = new Date().toISOString();
+    const [{ data: past }, { data: next }] = await Promise.all([
+      sb.from("schedule_occurrences").select("id,starts_at").eq("schedule_id", data.id).in("status", ["scheduled", "moved"]).lt("ends_at", nowIso).order("starts_at", { ascending: false }).limit(24),
+      sb.from("schedule_occurrences").select("id,starts_at").eq("schedule_id", data.id).in("status", ["scheduled", "moved"]).gte("ends_at", nowIso).order("starts_at").limit(12),
+    ]);
+    const dates = [...(past ?? []).reverse(), ...(next ?? [])].map((o: any) => ({ id: o.id, startsAt: o.starts_at, label: whenLabel(new Date(o.starts_at), s.timezone), past: o.starts_at < nowIso }));
+    const occ = dates.find((d) => d.id === data.occurrenceId) ?? next?.[0] ?? past?.[0] ?? null;
+    if (!occ) return { dates, occurrenceId: null, rows: [] as any[], title: s.title as string };
+    const [{ data: people }, { data: rsvps }] = await Promise.all([
+      sb.from("schedule_people").select("id, contact:contacts(display_name,email,phone)").eq("schedule_id", data.id).is("removed_at", null).order("created_at"),
+      sb.from("schedule_rsvps").select("person_id,answer,note,source,answered_at").eq("occurrence_id", occ.id),
+    ]);
+    const by = new Map((rsvps ?? []).map((r: any) => [r.person_id, r]));
+    const rows = (people ?? []).map((p: any) => {
+      const r: any = by.get(p.id);
+      return { personId: p.id, name: p.contact?.display_name || p.contact?.email || p.contact?.phone || "Someone", email: p.contact?.email ?? null, phone: p.contact?.phone ?? null, answer: (r?.answer ?? "none") as "yes" | "maybe" | "no" | "none", note: r?.note ?? null, source: r?.source ?? null, answeredAt: r?.answered_at ?? null };
+    });
+    return { dates, occurrenceId: occ.id as string, rows, title: s.title as string };
+  });
+
+export const setRsvpByHost = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({ id: z.string().uuid(), occurrenceId: z.string().uuid(), personId: z.string().uuid(), answer: z.enum(["yes", "maybe", "no", "none"]), note: z.string().trim().max(200).nullable().optional() }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const sb = context.supabase as any;
+    await ownedSchedule(sb, data.id);
+    const [{ data: o }, { data: p }] = await Promise.all([
+      sb.from("schedule_occurrences").select("id,schedule_id").eq("id", data.occurrenceId).maybeSingle(),
+      sb.from("schedule_people").select("id,schedule_id").eq("id", data.personId).maybeSingle(),
+    ]);
+    if (!o || o.schedule_id !== data.id || !p || p.schedule_id !== data.id) throw new Error("That person or date is not on this schedule.");
+    if (data.answer === "none") {
+      const { error } = await sb.from("schedule_rsvps").delete().eq("occurrence_id", o.id).eq("person_id", p.id);
+      if (error) throw new Error(error.message);
+      return { ok: true };
+    }
+    const { error } = await sb.from("schedule_rsvps").upsert(
+      { schedule_id: data.id, occurrence_id: o.id, person_id: p.id, answer: data.answer, note: data.note ?? null, source: "host", answered_at: new Date().toISOString() },
+      { onConflict: "occurrence_id,person_id" },
+    );
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+/** One-click suggestion: add the RSVP link to this schedule's reminder messages that lack it. */
+export const addRsvpLinkToSteps = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const sb = context.supabase as any;
+    await assertCanUse(sb);
+    await ownedSchedule(sb, data.id);
+    const { data: steps } = await sb.from("schedule_reminder_steps").select("id,channel,body,is_starting_now").eq("schedule_id", data.id).eq("active", true);
+    let n = 0;
+    for (const st of steps ?? []) {
+      if (st.is_starting_now || String(st.body).includes("{rsvp}")) continue;
+      const body = st.channel === "email" ? `${st.body}\n\nWill you be there? Let us know: {rsvp}` : `${st.body} Will you be there? {rsvp}`;
+      const { error } = await sb.from("schedule_reminder_steps").update({ body }).eq("id", st.id);
+      if (error) throw new Error(error.message);
+      n++;
+    }
+    return { updated: n };
   });
