@@ -309,6 +309,15 @@ export async function deliverClaimed(args: {
 
 const PEOPLE_SELECT = "*, contact:contacts(id,display_name,email,phone,email_opt_out)";
 
+/** "occurrence:person" keys for everyone who said they cannot attend. */
+export async function loadDeclined(admin: Admin, occurrenceIds: string[]): Promise<Set<string>> {
+  const out = new Set<string>();
+  if (!occurrenceIds.length) return out;
+  const { data } = await admin.from("schedule_rsvps").select("occurrence_id, person_id").in("occurrence_id", occurrenceIds).eq("answer", "no");
+  for (const r of data ?? []) out.add(`${(r as any).occurrence_id}:${(r as any).person_id}`);
+  return out;
+}
+
 export async function runTick(
   admin: Admin,
   opts: { now?: Date; dryRun?: boolean; ownerUserId?: string } = {},
@@ -349,6 +358,7 @@ export async function runTick(
     await runWelcome(admin, s, (people ?? []).filter((x: any) => x.schedule_id === s.id), owners, optedOut, now, dryRun, res, count);
   }
 
+  const declined = await loadDeclined(admin, (occs ?? []).map((o: any) => o.id));
   for (const o of occs ?? []) {
     const s: any = byId.get((o as any).schedule_id);
     if (!s) continue;
@@ -366,14 +376,16 @@ export async function runTick(
         if (person.channel !== "both" && person.channel !== channel) continue;
         res.considered++;
 
+        // "I cannot attend" for this date: no more automatic reminders for it.
+        const declinedHere = declined.has(`${(o as any).id}:${person.id}`);
         // Reminders that fall before the welcome are recorded as skipped, never sent.
-        if (s.welcome_enabled && s.welcome_at && due < new Date(s.welcome_at)) {
+        if (declinedHere || (s.welcome_enabled && s.welcome_at && due < new Date(s.welcome_at))) {
           const { data: sk } = await admin
             .from("schedule_reminder_sends")
             .upsert(
               {
                 occurrence_id: (o as any).id, person_id: person.id, step_id: (st as any).id, channel,
-                owner_user_id: s.owner_user_id, due_at: due.toISOString(), status: "skipped", error: "before_welcome",
+                owner_user_id: s.owner_user_id, due_at: due.toISOString(), status: "skipped", error: declinedHere ? "cannot_attend" : "before_welcome",
               },
               { onConflict: "occurrence_id,person_id,step_id,channel", ignoreDuplicates: true },
             )
