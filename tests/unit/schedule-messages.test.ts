@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { composeScheduleSms, normalizeJoinUrl, renderTemplate, smsSegments } from "@/lib/schedule-messages";
+import { composeScheduleSms, DEFAULT_MANUAL_SMS, normalizeJoinUrl, renderTemplate, smsSegments } from "@/lib/schedule-messages";
 
 describe("schedule message presentation", () => {
   it("leads first texts with the schedule and keeps attribution and STOP on separate lines", () => {
@@ -29,6 +29,24 @@ describe("schedule message presentation", () => {
   it("renders an optional description merge field", () => {
     expect(renderTemplate("Details: {description}", { description: "Meeting ID: 123\nPasscode: 456" }))
       .toBe("Details: Meeting ID: 123\nPasscode: 456");
+  });
+
+  it("gives Send now a complete event-first message with meeting details and RSVP", () => {
+    const message = renderTemplate(DEFAULT_MANUAL_SMS, {
+      first_name: "Chris",
+      title: "Kendrick Family Reunion Call",
+      when: "Sun, Oct 4 at 4:30 PM EDT",
+      description: "Meeting ID: 123 456 7890\nPasscode: Family",
+      join: "https://www.zoom.com/",
+      rsvp: "https://thekenroecollective.com/sc/personal-token",
+    });
+    const out = composeScheduleSms({ title: "Kendrick Family Reunion Call", message, firstText: false });
+
+    expect(out).toMatch(/^Kendrick Family Reunion Call\nHi Chris,/);
+    expect(out).toContain("Meeting ID: 123 456 7890\nPasscode: Family");
+    expect(out).toContain("Join meeting: https://www.zoom.com/");
+    expect(out).toContain("RSVP: https://thekenroecollective.com/sc/personal-token");
+    expect(out).not.toContain("Add it to your calendar");
   });
 });
 
