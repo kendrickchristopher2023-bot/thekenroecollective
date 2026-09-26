@@ -1091,11 +1091,13 @@ export const getPersonPage = createServerFn({ method: "GET" })
     const o = occ?.[0] ?? null;
     const { data: r } = o ? await admin.from("schedule_rsvps").select("answer,note").eq("occurrence_id", o.id).eq("person_id", p.id).maybeSingle() : { data: null };
     const { whenLabel, prettyPhone, normalizeJoinUrl } = await import("@/lib/schedule-messages");
+    let joinUrl: string | null = null;
+    try { joinUrl = normalizeJoinUrl(s.join_url as string | null); } catch { joinUrl = null; }
     return {
       firstName: String(p.contact?.display_name ?? "").split(/\s+/)[0] || "",
       title: s.title as string,
       timezone: s.timezone as string,
-      joinUrl: normalizeJoinUrl(s.join_url as string | null),
+      joinUrl,
       dialIn: s.dial_in as string | null,
       dialPin: s.dial_pin as string | null,
       location: s.location as string | null,
