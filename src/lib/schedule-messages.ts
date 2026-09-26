@@ -12,7 +12,7 @@ export interface StepDraft {
   position: number;
 }
 
-export const MERGE_FIELDS = ["first_name", "title", "when", "join", "calendar", "host"] as const;
+export const MERGE_FIELDS = ["first_name", "title", "when", "join", "calendar", "rsvp", "host", "host_name", "host_phone", "host_email", "host_note"] as const;
 
 export const DEFAULT_STEPS: StepDraft[] = [
   {
@@ -20,10 +20,10 @@ export const DEFAULT_STEPS: StepDraft[] = [
     channel: "email",
     is_starting_now: false,
     subject: "Coming up next week: {title}",
-    body: "Hi {first_name},\n\nA reminder that {title} is {when}.\n\nJoin: {join}\n\nAdd it to your calendar: {calendar}\n\nSee you there,\n{host}",
+    body: "Hi {first_name},\n\nA reminder that {title} is {when}.\n\nJoin: {join}\n\nWill you be there? Let us know: {rsvp}\n\nAdd it to your calendar: {calendar}\n\nSee you there,\n{host}",
     position: 0,
   },
-  { offset_minutes: -24 * 60, channel: "sms", is_starting_now: false, subject: null, body: "Hi {first_name}, {title} is tomorrow, {when}. Join: {join}", position: 1 },
+  { offset_minutes: -24 * 60, channel: "sms", is_starting_now: false, subject: null, body: "Hi {first_name}, {title} is tomorrow, {when}. Join: {join} Will you be there? {rsvp}", position: 1 },
   { offset_minutes: -60, channel: "sms", is_starting_now: false, subject: null, body: "{title} starts in 1 hour ({when}). Join: {join}", position: 2 },
   { offset_minutes: 0, channel: "sms", is_starting_now: true, subject: null, body: "{title} is starting now. Join: {join}", position: 3 },
 ];
@@ -34,7 +34,12 @@ export interface MergeValues {
   when?: string | null;
   join?: string | null;
   calendar?: string | null;
+  rsvp?: string | null;
   host?: string | null;
+  host_name?: string | null;
+  host_phone?: string | null;
+  host_email?: string | null;
+  host_note?: string | null;
 }
 
 export function renderTemplate(tpl: string, v: MergeValues): string {
@@ -44,9 +49,41 @@ export function renderTemplate(tpl: string, v: MergeValues): string {
     when: (v.when || "").trim(),
     join: (v.join || "see the invitation").trim(),
     calendar: (v.calendar || "").trim(),
+    rsvp: (v.rsvp || "").trim(),
     host: (v.host || "").trim(),
+    host_name: (v.host_name || v.host || "").trim(),
+    host_phone: (v.host_phone || "").trim(),
+    host_email: (v.host_email || "").trim(),
+    host_note: (v.host_note || "").trim(),
   };
-  return tpl.replace(/\{(first_name|title|when|join|calendar|host)\}/g, (_m, k: string) => map[k] ?? _m);
+  return tpl.replace(/\{(first_name|title|when|join|calendar|rsvp|host_name|host_phone|host_email|host_note|host)\}/g, (_m, k: string) => map[k] ?? _m);
+}
+
+export interface HostDetails {
+  name?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  note?: string | null;
+}
+
+export function hostFromSchedule(s: any): HostDetails | null {
+  const h = { name: s?.host_name || null, phone: s?.host_phone || null, email: s?.host_email || null, note: s?.host_note || null };
+  return h.name || h.phone || h.email ? h : null;
+}
+
+/** "(404) 555-0123" for display; anything else is shown as stored. */
+export function prettyPhone(p: string | null | undefined): string {
+  const d = String(p ?? "").replace(/\D/g, "");
+  const ten = d.length === 11 && d.startsWith("1") ? d.slice(1) : d;
+  return ten.length === 10 ? `(${ten.slice(0, 3)}) ${ten.slice(3, 6)}-${ten.slice(6)}` : String(p ?? "");
+}
+
+/** The short line added to every text when host details exist. Empty when there is nothing to add. */
+export function hostSmsLine(h: HostDetails | null): string {
+  if (!h || (!h.phone && !h.email)) return "";
+  const who = (h.name || "").trim();
+  const how = h.phone ? prettyPhone(h.phone) : String(h.email);
+  return ` Questions? ${who ? `${who} ` : ""}${how}`;
 }
 
 export function firstName(displayName: string | null | undefined): string {

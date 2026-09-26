@@ -9,6 +9,8 @@ import { SchedulePeopleList } from "@/components/schedule-people-list";
 import { ScheduleImport } from "@/components/schedule-import";
 import { SendNowButton, SKIP_LABEL } from "@/components/schedule-send-now";
 import { WelcomeSection } from "@/components/schedule-welcome";
+import { AttendanceReport, RsvpSuggestion } from "@/components/schedule-attendance";
+import { getHostDefaults } from "@/lib/schedules.functions";
 import {
   getSchedule,
   getScheduleAccess,
@@ -43,7 +45,7 @@ export const Route = createFileRoute("/_authenticated/schedules/$id")({
   component: ScheduleEditor,
 });
 
-type Tab = "details" | "people" | "reminders" | "upcoming";
+type Tab = "details" | "people" | "reminders" | "upcoming" | "attendance";
 
 const US_ZONES = ["America/New_York", "America/Chicago", "America/Denver", "America/Phoenix", "America/Los_Angeles", "America/Anchorage", "Pacific/Honolulu"];
 const DAY_LABEL: Record<Weekday, string> = { MO: "Mon", TU: "Tue", WE: "Wed", TH: "Thu", FR: "Fri", SA: "Sat", SU: "Sun" };
@@ -75,6 +77,10 @@ function blank() {
     ends_kind: "never" as "never" | "on_date" | "count",
     until_local: "" as string | null,
     occurrence_count: 12 as number | null,
+    host_name: "",
+    host_phone: "",
+    host_email: "",
+    host_note: "",
   };
 }
 
@@ -131,9 +137,9 @@ function ScheduleEditor() {
 
         {!isNew ? (
           <nav className="mt-6 flex gap-1 overflow-x-auto rounded-full bg-card p-1 ring-1 ring-ink/5" aria-label="Schedule sections">
-            {(["details", "people", "reminders", "upcoming"] as Tab[]).map((t) => (
+            {(["details", "people", "reminders", "upcoming", "attendance"] as Tab[]).map((t) => (
               <button key={t} onClick={() => setTab(t)} className={`whitespace-nowrap rounded-full px-4 py-2 text-sm ${tab === t ? "bg-velvet text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-                {t === "details" ? "Details" : t === "people" ? `People${data ? ` (${data.people.length})` : ""}` : t === "reminders" ? "Reminders" : "Upcoming"}
+                {t === "details" ? "Details" : t === "people" ? `People${data ? ` (${data.people.length})` : ""}` : t === "reminders" ? "Reminders" : t === "upcoming" ? "Upcoming" : "Attendance"}
               </button>
             ))}
           </nav>
@@ -154,6 +160,7 @@ function ScheduleEditor() {
           {data && tab === "people" ? <PeoplePanel scheduleId={id} people={data.people} removedPeople={(data as any).removedPeople ?? []} isDemo={isDemo} onChange={refresh} /> : null}
           {data && tab === "reminders" ? <RemindersPanel data={data} scheduleId={id} steps={data.steps} problems={data.problems} history={data.history ?? []} people={data.people} onChange={refresh} /> : null}
           {data && tab === "upcoming" ? <UpcomingPanel data={data} onChange={refresh} /> : null}
+          {data && tab === "attendance" ? <AttendanceReport scheduleId={id} /> : null}
         </div>
 
         {data ? <DangerZone scheduleId={id} status={data.schedule.status} isOwner={isOwner} onChange={refresh} /> : null}
@@ -168,6 +175,11 @@ function ScheduleEditor() {
 function DetailsForm({ initial, disabled, onSaved }: { initial: any | null; disabled: boolean; onSaved: (id: string) => void }) {
   const save = useServerFn(saveSchedule);
   const split = useServerFn(splitSchedule);
+  const hostDefaults = useServerFn(getHostDefaults);
+  useEffect(() => {
+    if (initial) return;
+    void hostDefaults().then((h) => setV((x: any) => ({ ...x, host_name: x.host_name || h.host_name, host_phone: x.host_phone || h.host_phone, host_email: x.host_email || h.host_email }))).catch(() => {});
+  }, [initial, hostDefaults]);
   const [v, setV] = useState(() => {
     if (!initial) return blank();
     return {
@@ -206,6 +218,10 @@ function DetailsForm({ initial, disabled, onSaved }: { initial: any | null; disa
         ends_kind: v.ends_kind,
         until_local: v.ends_kind === "on_date" && v.until_local ? `${String(v.until_local).slice(0, 10)}T23:59` : null,
         occurrence_count: v.ends_kind === "count" ? Number(v.occurrence_count) || 1 : null,
+        host_name: v.host_name || null,
+        host_phone: v.host_phone || null,
+        host_email: v.host_email || null,
+        host_note: v.host_note || null,
       };
       if (mode === "future" && initial) {
         const r = await split({ data: { id: initial.id, fromLocal: v.start_local, values } });
@@ -251,6 +267,25 @@ function DetailsForm({ initial, disabled, onSaved }: { initial: any | null; disa
           </label>
           <label><span className={label}>Location (optional)</span>
             <input className={field} value={v.location ?? ""} onChange={(e) => set("location", e.target.value)} />
+          </label>
+        </div>
+      </section>
+
+      <section className="rounded-3xl bg-card p-6 ring-1 ring-ink/5 sm:p-8">
+        <h2 className="font-serif text-xl">Host details</h2>
+        <p className="mt-1 text-sm text-muted-foreground">Everyone on this list will see these details. Emails show them in a contact box, and texts end with a short "Questions?" line.</p>
+        <div className="mt-4 grid gap-4 sm:grid-cols-3">
+          <label><span className={label}>Host name</span>
+            <input className={field} value={v.host_name ?? ""} onChange={(e) => set("host_name", e.target.value)} maxLength={100} />
+          </label>
+          <label><span className={label}>Host phone</span>
+            <input className={field} value={v.host_phone ?? ""} onChange={(e) => set("host_phone", e.target.value)} inputMode="tel" maxLength={40} />
+          </label>
+          <label><span className={label}>Host email</span>
+            <input className={field} value={v.host_email ?? ""} onChange={(e) => set("host_email", e.target.value)} inputMode="email" maxLength={254} />
+          </label>
+          <label className="sm:col-span-3"><span className={label}>Note (optional)</span>
+            <input className={field} value={v.host_note ?? ""} onChange={(e) => set("host_note", e.target.value)} placeholder="Text me if you can't make it" maxLength={200} />
           </label>
         </div>
       </section>
@@ -496,6 +531,7 @@ const PROBLEM_LABEL: Record<string, string> = {
   demo: "Not sent: demo account",
   no_longer_scheduled: "Not sent: the date or person was removed",
   before_welcome: "Skipped: before your welcome message",
+  cannot_attend: "Skipped: said they cannot attend",
 };
 
 const HISTORY_STATUS: Record<string, string> = {
@@ -516,6 +552,7 @@ function RemindersPanel({ data, scheduleId, steps, problems, history, people, on
 
   return (
     <div className="space-y-6">
+      <RsvpSuggestion scheduleId={scheduleId} steps={steps} onDone={onChange} />
       <WelcomeSection schedule={data.schedule} people={people} occurrences={data.occurrences} onChange={onChange} />
       <section className="rounded-3xl bg-card p-6 ring-1 ring-ink/5 sm:p-8">
         <h2 className="font-serif text-xl">Reminder plan</h2>

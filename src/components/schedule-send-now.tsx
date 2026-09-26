@@ -29,6 +29,7 @@ export const SKIP_LABEL: Record<string, string> = {
   quiet_hours: "texts wait until 8:00 AM",
   demo: "demo, nothing really sent",
   scheduled_8am: "test run, would go at 8:00 AM",
+  cannot_attend: "said they cannot attend",
 };
 
 function plural(n: number, one: string, many = `${one}s`) {
@@ -69,6 +70,7 @@ function SendNowPanel({ scheduleId, people, onClose }: { scheduleId: string; peo
   const [busy, setBusy] = useState(false);
   const [results, setResults] = useState<any | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [includeDeclined, setIncludeDeclined] = useState(false);
   const requestId = useRef<string>(newId());
   const filledFor = useRef<string | null>(null);
 
@@ -77,7 +79,7 @@ function SendNowPanel({ scheduleId, people, onClose }: { scheduleId: string; peo
   useEffect(() => {
     let live = true;
     const t = setTimeout(() => {
-      preview({ data: { scheduleId, occurrenceId, channel, personIds } })
+      preview({ data: { scheduleId, occurrenceId, channel, personIds, includeDeclined } })
         .then((p) => {
           if (!live) return;
           setPlan(p);
@@ -93,7 +95,7 @@ function SendNowPanel({ scheduleId, people, onClose }: { scheduleId: string; peo
         .catch((e) => live && setErr(toUserMessage(e)));
     }, 150);
     return () => { live = false; clearTimeout(t); };
-  }, [preview, scheduleId, occurrenceId, channel, JSON.stringify(personIds)]);
+  }, [preview, scheduleId, occurrenceId, channel, includeDeclined, JSON.stringify(personIds)]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape" && !busy) onClose(); };
@@ -106,10 +108,12 @@ function SendNowPanel({ scheduleId, people, onClose }: { scheduleId: string; peo
 
   const sample = plan?.samplePerson;
   const smsPreview = useMemo(() => {
-    let b = smsBody.replace(/\{first_name\}/g, sample?.firstName || "there").replace(/\{calendar\}/g, sample?.calendar || "");
+    let b = smsBody.replace(/\{first_name\}/g, sample?.firstName || "there").replace(/\{calendar\}/g, sample?.calendar || "").replace(/\{rsvp\}/g, sample?.rsvp || "");
+    b += plan?.hostLine || "";
     if (sample?.needsIntro) b = complianceIntro(sample.host) + b + STOP_LINE;
     return b.slice(0, 480);
-  }, [smsBody, sample]);
+  }, [smsBody, sample, plan?.hostLine]);
+  const hostSeg = smsSegments(plan?.hostLine || "");
   const seg = smsSegments(smsPreview);
 
   const summary = useMemo(() => {
@@ -138,7 +142,7 @@ function SendNowPanel({ scheduleId, people, onClose }: { scheduleId: string; peo
     setBusy(true);
     setErr(null);
     try {
-      const r = await send({ data: { scheduleId, occurrenceId, channel, personIds, requestId: requestId.current, subject, emailBody, smsBody, textsAtMorning: atMorning } });
+      const r = await send({ data: { scheduleId, occurrenceId, channel, personIds, requestId: requestId.current, subject, emailBody, smsBody, textsAtMorning: atMorning, includeDeclined } });
       setResults(r);
       setStep("results");
     } catch (e) {
@@ -192,6 +196,12 @@ function SendNowPanel({ scheduleId, people, onClose }: { scheduleId: string; peo
                   <button type="button" aria-pressed={everyone} onClick={() => setEveryone(true)} className={`rounded-full px-4 py-2 text-sm ${everyone ? "bg-velvet text-primary-foreground" : "bg-secondary"}`}>Everyone ({people.length})</button>
                   <button type="button" aria-pressed={!everyone} onClick={() => setEveryone(false)} className={`rounded-full px-4 py-2 text-sm ${!everyone ? "bg-velvet text-primary-foreground" : "bg-secondary"}`}>Pick people</button>
                 </div>
+                {plan?.declinedCount ? (
+                  <label className="mt-2 flex items-center gap-2 text-sm">
+                    <input type="checkbox" checked={includeDeclined} onChange={(e) => setIncludeDeclined(e.target.checked)} />
+                    Also send to {plural(plan.declinedCount, "person", "people")} who said they cannot attend this date
+                  </label>
+                ) : null}
                 {!everyone ? (
                   <ul className="mt-2 max-h-48 divide-y divide-ink/5 overflow-y-auto rounded-2xl ring-1 ring-ink/5">
                     {people.map((p) => (
@@ -221,9 +231,10 @@ function SendNowPanel({ scheduleId, people, onClose }: { scheduleId: string; peo
                   <p className="text-sm font-medium">Text</p>
                   <textarea className={field} rows={3} value={smsBody} onChange={(e) => setSmsBody(e.target.value)} aria-label="Text message" maxLength={480} />
                   <p className="mt-3 text-xs font-medium text-muted-foreground">Preview{sample ? ` for ${sample.firstName}` : ""}</p>
-                  <p className="mt-1 whitespace-pre-wrap rounded-2xl bg-secondary px-4 py-3 text-sm">{smsPreview}</p>
+                  <p className="mt-1 whitespace-pre-wrap break-all rounded-2xl bg-secondary px-4 py-3 text-sm">{smsPreview}</p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     {seg.chars} characters, {plural(seg.segments, "text segment")}{seg.unicode ? " (emoji or special characters use shorter segments)" : ""}.
+                    {plan?.hostLine ? ` Includes your contact line (${hostSeg.chars} characters).` : ""}
                     {sample?.needsIntro ? " A first text also says it is from you and how to reply STOP." : ""}
                   </p>
                   {plan.quiet ? (
