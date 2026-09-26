@@ -53,11 +53,31 @@ describe("schedule message presentation", () => {
     });
     const out = composeScheduleSms({ title: "Kendrick Family Reunion Call", message, firstText: false });
 
-    expect(out).toMatch(/^Kendrick Family Reunion Call\nHi Chris,/);
+    expect(out).toMatch(/^Reminder: Kendrick Family Reunion Call\nHi Chris,/);
     expect(out).toContain("Meeting ID: 123 456 7890\nPasscode: Family");
     expect(out).toContain("Join meeting: https://www.zoom.com/");
     expect(out).toContain("RSVP: https://thekenroecollective.com/sc/personal-token");
     expect(out).not.toContain("Add it to your calendar");
+  });
+
+  it("keeps a realistic reminder text within 3 segments after adding the Reminder label", () => {
+    const message = renderTemplate(DEFAULT_MANUAL_SMS, {
+      first_name: "Chris",
+      title: "Kendrick Family Reunion Call",
+      when: "Sun, Oct 4 at 4:30 PM EDT",
+      description: "Meeting ID: 628 671 9107\nPasscode: 121212",
+      join: "https://www.zoom.com/",
+      rsvp: "https://thekenroecollective.com/sc/fb293bf39e7f79879003e784e9c780cbf980e11c32bae6ac",
+    });
+    const out = composeScheduleSms({
+      title: "Kendrick Family Reunion Call",
+      message,
+      hostLine: " Questions? Julius Kendrick (586) 823-8085",
+      firstText: false,
+    });
+    const segments = smsSegments(out);
+    expect(segments.segments).toBeLessThanOrEqual(3);
+    expect(segments.chars).toBeGreaterThan(300);
   });
 });
 
