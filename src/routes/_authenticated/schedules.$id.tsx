@@ -10,6 +10,7 @@ import { ScheduleImport } from "@/components/schedule-import";
 import { SendNowButton, SKIP_LABEL } from "@/components/schedule-send-now";
 import { WelcomeSection } from "@/components/schedule-welcome";
 import { AttendanceReport, RsvpSuggestion } from "@/components/schedule-attendance";
+import { getHostDefaults } from "@/lib/schedules.functions";
 import {
   getSchedule,
   getScheduleAccess,
@@ -174,6 +175,11 @@ function ScheduleEditor() {
 function DetailsForm({ initial, disabled, onSaved }: { initial: any | null; disabled: boolean; onSaved: (id: string) => void }) {
   const save = useServerFn(saveSchedule);
   const split = useServerFn(splitSchedule);
+  const hostDefaults = useServerFn(getHostDefaults);
+  useEffect(() => {
+    if (initial) return;
+    void hostDefaults().then((h) => setV((x: any) => ({ ...x, host_name: x.host_name || h.host_name, host_phone: x.host_phone || h.host_phone, host_email: x.host_email || h.host_email }))).catch(() => {});
+  }, [initial, hostDefaults]);
   const [v, setV] = useState(() => {
     if (!initial) return blank();
     return {
@@ -433,6 +439,7 @@ function PeoplePanel({ scheduleId, people, removedPeople, isDemo, onChange }: { 
 
   return (
     <div className="space-y-6">
+      <RsvpSuggestion scheduleId={scheduleId} steps={steps} onDone={onChange} />
       <section className="rounded-3xl bg-card p-6 ring-1 ring-ink/5 sm:p-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-serif text-xl">Add people</h2>
