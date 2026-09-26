@@ -21,7 +21,6 @@ import {
   hostFromSchedule,
   hostSmsLine,
   prettyPhone,
-  normalizeJoinUrl,
   DEFAULT_MANUAL_SMS,
   scheduleJoinDetails,
   scheduleJoinLines,
