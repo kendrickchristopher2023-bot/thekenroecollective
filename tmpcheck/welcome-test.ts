@@ -61,7 +61,7 @@ try {
   const B = await addPerson(owner.id, s.id, "Bo Optout", "+12025550102", "bo@example.com", "both", true);
   let C: string | null = null;
   try { C = await addPerson(owner.id, s.id, "Cy Noconsent", "+12025550103", "cy@example.com", "both", false); }
-  catch (e: any) { log("No-consent text person refused by database:", e.message); C = await addPerson(owner.id, s.id, "Cy Noconsent", "+12025550103", "cy@example.com", "email", false); }
+  catch (e: any) { log("No-consent text person refused by database:", e.message); C = await addPerson(owner.id, s.id, "Cy Emailonly", null, "cy2@example.com", "email", false); }
   cleanup.phones.push("+12025550102");
   await admin.from("sms_consent_log").insert({ phone_number: "+12025550102", opted_out: true, opted_out_at: new Date().toISOString() } as any);
   const run = (w: string, extra: any = {}) => runTick(admin as any, { now: at(w), dryRun: true, ownerUserId: owner.id, ...extra });
