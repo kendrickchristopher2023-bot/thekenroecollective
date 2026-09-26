@@ -142,7 +142,7 @@ function SendNowPanel({ scheduleId, people, onClose }: { scheduleId: string; peo
     setBusy(true);
     setErr(null);
     try {
-      const r = await send({ data: { scheduleId, occurrenceId, channel, personIds, requestId: requestId.current, subject, emailBody, smsBody, textsAtMorning: atMorning } });
+      const r = await send({ data: { scheduleId, occurrenceId, channel, personIds, requestId: requestId.current, subject, emailBody, smsBody, textsAtMorning: atMorning, includeDeclined } });
       setResults(r);
       setStep("results");
     } catch (e) {
