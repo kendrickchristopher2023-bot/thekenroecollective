@@ -3854,6 +3854,7 @@ export type Database = {
           removed_at: string | null
           rsvp_token: string
           schedule_id: string
+          short_code: string
           sms_consent_at: string | null
           sms_consent_by: string | null
           updated_at: string
@@ -3868,6 +3869,7 @@ export type Database = {
           removed_at?: string | null
           rsvp_token?: string
           schedule_id: string
+          short_code?: string
           sms_consent_at?: string | null
           sms_consent_by?: string | null
           updated_at?: string
@@ -3882,6 +3884,7 @@ export type Database = {
           removed_at?: string | null
           rsvp_token?: string
           schedule_id?: string
+          short_code?: string
           sms_consent_at?: string | null
           sms_consent_by?: string | null
           updated_at?: string
@@ -5684,6 +5687,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      gen_schedule_short_code: { Args: never; Returns: string }
       get_cron_shared_secret: { Args: never; Returns: string }
       get_ecard_by_slug: { Args: { _slug: string }; Returns: Json }
       get_ecard_contribution_by_token: {
