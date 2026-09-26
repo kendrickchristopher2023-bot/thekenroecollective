@@ -95,13 +95,14 @@ export const getSchedule = createServerFn({ method: "GET" })
   .handler(async ({ data, context }) => {
     const sb = context.supabase as any;
     const schedule = await ownedSchedule(sb, data.id);
-    const [{ data: exceptions }, { data: people }, { data: steps }, { data: occurrences }, { data: sends }, { data: allOcc }] = await Promise.all([
+    const [{ data: exceptions }, { data: people }, { data: steps }, { data: occurrences }, { data: sends }, { data: allOcc }, { data: removedPeople }] = await Promise.all([
       sb.from("schedule_exceptions").select("*").eq("schedule_id", data.id),
       sb.from("schedule_people").select("*, contact:contacts(id,display_name,email,phone,email_opt_out)").eq("schedule_id", data.id).is("removed_at", null).order("created_at"),
       sb.from("schedule_reminder_steps").select("*").eq("schedule_id", data.id).eq("active", true).order("position"),
       sb.from("schedule_occurrences").select("*").eq("schedule_id", data.id).gte("ends_at", new Date().toISOString()).order("starts_at").limit(12),
       sb.from("schedule_reminder_sends").select("id,status,error,channel,due_at,sent_at,created_at,kind,person_id,step_id,occurrence_id").eq("owner_user_id", context.userId).order("created_at", { ascending: false }).limit(300),
       sb.from("schedule_occurrences").select("id,starts_at").eq("schedule_id", data.id),
+      sb.from("schedule_people").select("id,removed_at,channel, contact:contacts(id,display_name,email,phone)").eq("schedule_id", data.id).not("removed_at", "is", null).order("removed_at", { ascending: false }).limit(500),
     ]);
     const occIds = new Set((allOcc ?? []).map((o: any) => o.id));
     const occStart = new Map((allOcc ?? []).map((o: any) => [o.id, o.starts_at]));
@@ -111,6 +112,7 @@ export const getSchedule = createServerFn({ method: "GET" })
       schedule,
       exceptions: exceptions ?? [],
       people: people ?? [],
+      removedPeople: removedPeople ?? [],
       steps: steps ?? [],
       occurrences: occurrences ?? [],
       problems: mine.filter((s: any) => ["held", "paused", "blocked", "failed"].includes(s.status)).slice(0, 50),
