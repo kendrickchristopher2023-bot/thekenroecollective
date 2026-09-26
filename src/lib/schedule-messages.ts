@@ -15,7 +15,7 @@ export interface StepDraft {
   audience?: "all" | "no_answer";
 }
 
-export const MERGE_FIELDS = ["first_name", "title", "when", "join", "description", "calendar", "rsvp", "host", "host_name", "host_phone", "host_email", "host_note"] as const;
+export const MERGE_FIELDS = ["first_name", "title", "when", "join", "meeting_id", "passcode", "description", "calendar", "rsvp", "host", "host_name", "host_phone", "host_email", "host_note"] as const;
 
 export const DEFAULT_STEPS: StepDraft[] = [
   {
@@ -63,6 +63,8 @@ export interface MergeValues {
   title?: string | null;
   when?: string | null;
   join?: string | null;
+  meeting_id?: string | null;
+  passcode?: string | null;
   description?: string | null;
   calendar?: string | null;
   rsvp?: string | null;
@@ -74,11 +76,16 @@ export interface MergeValues {
 }
 
 export function renderTemplate(tpl: string, v: MergeValues): string {
+  const hasMeetingId = tpl.includes("{meeting_id}") || (tpl.includes("{description}") && labeledValueIn(v.description, "Meeting ID", v.meeting_id));
+  const hasPasscode = tpl.includes("{passcode}") || (tpl.includes("{description}") && labeledValueIn(v.description, "Passcode", v.passcode));
+  const join = [(v.join || "see the invitation").trim(), !hasMeetingId && v.meeting_id ? `Meeting ID: ${v.meeting_id.trim()}` : "", !hasPasscode && v.passcode ? `Passcode: ${v.passcode.trim()}` : ""].filter(Boolean).join("\n");
   const map: Record<string, string> = {
     first_name: (v.first_name || "there").trim(),
     title: (v.title || "Our call").trim(),
     when: (v.when || "").trim(),
-    join: (v.join || "see the invitation").trim(),
+    join,
+    meeting_id: (v.meeting_id || "").trim(),
+    passcode: (v.passcode || "").trim(),
     description: (v.description || "").trim(),
     calendar: (v.calendar || "").trim(),
     rsvp: (v.rsvp || "").trim(),
@@ -88,7 +95,51 @@ export function renderTemplate(tpl: string, v: MergeValues): string {
     host_email: (v.host_email || "").trim(),
     host_note: (v.host_note || "").trim(),
   };
-  return tpl.replace(/\{(first_name|title|when|join|description|calendar|rsvp|host_name|host_phone|host_email|host_note|host)\}/g, (_m, k: string) => map[k] ?? _m);
+  return tpl.replace(/\{(first_name|title|when|join|meeting_id|passcode|description|calendar|rsvp|host_name|host_phone|host_email|host_note|host)\}/g, (_m, k: string) => map[k] ?? _m);
+}
+
+function labeledValueIn(text: string | null | undefined, label: string, value: string | null | undefined): boolean {
+  return !!text && !!value && text.toLocaleLowerCase().includes(`${label}:`.toLocaleLowerCase()) && text.includes(value.trim());
+}
+
+export function formatZoomMeetingId(value: string): string {
+  const digits = value.replace(/\D/g, "");
+  if (digits.length === 9 || digits.length === 10) return `${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}`;
+  if (digits.length === 11) return `${digits.slice(0, 3)} ${digits.slice(3, 7)} ${digits.slice(7)}`;
+  return value.trim();
+}
+
+/** Extracts a public meeting identifier. Password-bearing URL parameters are intentionally ignored. */
+export function meetingIdFromUrl(value: string | null | undefined): string | null {
+  let url: URL;
+  try { url = new URL(normalizeJoinUrl(value) || ""); } catch { return null; }
+  const host = url.hostname.toLocaleLowerCase();
+  if (host.endsWith("zoom.us")) {
+    const id = url.pathname.match(/\/j\/(\d{9,11})(?:\/|$)/i)?.[1];
+    return id ? formatZoomMeetingId(id) : null;
+  }
+  if (host === "meet.google.com") {
+    const code = url.pathname.split("/").filter(Boolean)[0];
+    return code && /^[a-z]{3}-[a-z]{4}-[a-z]{3}$/i.test(code) ? code : null;
+  }
+  if (host.endsWith("teams.microsoft.com")) {
+    const queryId = url.searchParams.get("meetingId");
+    if (queryId) return queryId;
+    const pathId = url.pathname.match(/\/meetup-join\/([^/?]+)/i)?.[1];
+    return pathId ? decodeURIComponent(pathId) : null;
+  }
+  return null;
+}
+
+export function scheduleJoinDetails(s: any) {
+  let join = "";
+  try { join = normalizeJoinUrl(s?.join_url) || ""; } catch { join = ""; }
+  return { join, meetingId: String(s?.meeting_id || "").trim(), passcode: String(s?.meeting_passcode || "").trim(), dialIn: String(s?.dial_in || "").trim(), dialPin: String(s?.dial_pin || "").trim(), location: String(s?.location || "").trim() };
+}
+
+export function scheduleJoinLines(s: any): string[] {
+  const d = scheduleJoinDetails(s);
+  return [d.join ? `Join: ${d.join}` : "", d.meetingId ? `Meeting ID: ${d.meetingId}` : "", d.passcode ? `Passcode: ${d.passcode}` : "", d.dialIn ? `Dial in: ${d.dialIn}${d.dialPin ? `, PIN ${d.dialPin}` : ""}` : "", !d.join && !d.dialIn && d.location ? `Location: ${d.location}` : ""].filter(Boolean);
 }
 
 export interface HostDetails {
@@ -185,6 +236,7 @@ export function composeScheduleSms(args: {
   firstText?: boolean;
   /** Word above the title, e.g. "Reminder". Pass null for messages that are not reminders (welcomes). */
   leadLabel?: string | null;
+  protectedLines?: string[];
   maxChars?: number;
 }): string {
   const title = args.title.trim() || "Schedule reminder";
@@ -193,11 +245,12 @@ export function composeScheduleSms(args: {
   const heading = label ? `${label}: ${title}` : title;
   const startsWithHeading = message.toLocaleLowerCase().startsWith(heading.toLocaleLowerCase());
   const lead = startsWithHeading ? message : `${heading}\n${message}`;
-  const tail = [args.hostLine?.trim(), args.firstText ? complianceIntro(args.hostName || "your host") : "", args.firstText ? STOP_LINE : ""]
+  const protectedBlock = (args.protectedLines ?? []).map((x) => x.trim()).filter(Boolean).join("\n");
+  const tail = [protectedBlock, args.hostLine?.trim(), args.firstText ? complianceIntro(args.hostName || "your host") : "", args.firstText ? STOP_LINE : ""]
     .filter(Boolean)
     .join("\n");
   const maxChars = args.maxChars ?? 480;
-  const room = Math.max(40, maxChars - (tail ? tail.length + 2 : 0));
+  const room = Math.max(0, maxChars - (tail ? tail.length + 2 : 0));
   const body = [...lead].slice(0, room).join("").trimEnd();
   return tail ? `${body}\n\n${tail}` : body;
 }

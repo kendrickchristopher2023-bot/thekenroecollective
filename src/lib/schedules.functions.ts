@@ -80,6 +80,8 @@ const ScheduleInput = z.object({
   join_url: z.string().max(1000).nullable().optional(),
   dial_in: z.string().max(100).nullable().optional(),
   dial_pin: z.string().max(40).nullable().optional(),
+  meeting_id: z.string().trim().max(100).nullable().optional(),
+  meeting_passcode: z.string().trim().max(100).nullable().optional(),
   location: z.string().max(500).nullable().optional(),
   start_local: wall,
   timezone: z.string().min(3).max(64),
@@ -202,8 +204,9 @@ export const saveSchedule = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const sb = context.supabase as any;
     await assertCanUse(sb);
-    const { normalizeJoinUrl } = await import("@/lib/schedule-messages");
-    const v: any = { ...data.values, join_url: normalizeJoinUrl(data.values.join_url), rrule: cleanRule(data.values.rrule), ...(await cleanHost(data.values)) };
+    const { normalizeJoinUrl, meetingIdFromUrl } = await import("@/lib/schedule-messages");
+    const join_url = normalizeJoinUrl(data.values.join_url);
+    const v: any = { ...data.values, join_url, meeting_id: data.values.meeting_id?.trim() || meetingIdFromUrl(join_url), meeting_passcode: data.values.meeting_passcode?.trim() || null, rrule: cleanRule(data.values.rrule), ...(await cleanHost(data.values)) };
     if (v.ends_kind !== "on_date") v.until_local = null;
     if (v.ends_kind !== "count") v.occurrence_count = null;
     if (!v.rrule) { v.ends_kind = "count"; v.occurrence_count = 1; v.until_local = null; }
@@ -251,8 +254,9 @@ export const splitSchedule = createServerFn({ method: "POST" })
     const untilLocal = d.toISOString().slice(0, 16);
     const { error: e1 } = await sb.from("schedules").update({ ends_kind: "on_date", until_local: untilLocal, occurrence_count: null }).eq("id", data.id);
     if (e1) throw new Error(e1.message);
-    const { normalizeJoinUrl } = await import("@/lib/schedule-messages");
-    const v = { ...data.values, join_url: normalizeJoinUrl(data.values.join_url), rrule: cleanRule(data.values.rrule), ...(await cleanHost(data.values)) };
+    const { normalizeJoinUrl, meetingIdFromUrl } = await import("@/lib/schedule-messages");
+    const join_url = normalizeJoinUrl(data.values.join_url);
+    const v = { ...data.values, join_url, meeting_id: data.values.meeting_id?.trim() || meetingIdFromUrl(join_url), meeting_passcode: data.values.meeting_passcode?.trim() || null, rrule: cleanRule(data.values.rrule), ...(await cleanHost(data.values)) };
     const { data: row, error } = await sb
       .from("schedules")
       .insert({ ...v, owner_user_id: context.userId, parent_schedule_id: data.id, is_demo: old.is_demo, source_type: old.source_type, source_id: old.source_id })
@@ -1082,7 +1086,7 @@ export const getPersonPage = createServerFn({ method: "GET" })
     const admin = supabaseAdmin as any;
     const p = await personByToken(admin, data.token);
     if (!p) return null;
-    const { data: s } = await admin.from("schedules").select("title,kind,timezone,join_url,dial_in,dial_pin,location,description,host_name,host_phone,host_email,host_note,status").eq("id", p.schedule_id).maybeSingle();
+    const { data: s } = await admin.from("schedules").select("title,kind,timezone,join_url,dial_in,dial_pin,meeting_id,meeting_passcode,location,description,host_name,host_phone,host_email,host_note,status").eq("id", p.schedule_id).maybeSingle();
     if (!s) return null;
     // The next date that has not ended yet; if none, the most recent one so a past answer still shows.
     const nowIso = new Date().toISOString();
@@ -1100,6 +1104,8 @@ export const getPersonPage = createServerFn({ method: "GET" })
       joinUrl,
       dialIn: s.dial_in as string | null,
       dialPin: s.dial_pin as string | null,
+      meetingId: s.meeting_id as string | null,
+      meetingPasscode: s.meeting_passcode as string | null,
       location: s.location as string | null,
       description: s.description as string | null,
       occurrenceId: (o?.id as string) ?? null,

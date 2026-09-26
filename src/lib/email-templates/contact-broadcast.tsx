@@ -11,6 +11,9 @@ interface Props {
   ctaUrl?: string | null
   ctaLabel?: string | null
   rsvpUrl?: string | null
+  joinUrl?: string | null
+  meetingId?: string | null
+  meetingPasscode?: string | null
   hostName?: string | null
   hostPhone?: string | null
   hostPhoneLabel?: string | null
@@ -28,7 +31,7 @@ function renderBody(body: string, rsvpUrl?: string | null): React.ReactNode {
   )
 }
 
-const Email = ({ subject, body, senderName, ctaUrl, ctaLabel, rsvpUrl, hostName, hostPhone, hostPhoneLabel, hostEmail, hostNote }: Props) => (
+const Email = ({ subject, body, senderName, ctaUrl, ctaLabel, rsvpUrl, joinUrl, meetingId, meetingPasscode, hostName, hostPhone, hostPhoneLabel, hostEmail, hostNote }: Props) => (
   <Html lang="en" dir="ltr">
     <Head />
     <Preview>{subject || 'A message from ' + (senderName || 'The Kenroe Collective')}</Preview>
@@ -37,6 +40,9 @@ const Email = ({ subject, body, senderName, ctaUrl, ctaLabel, rsvpUrl, hostName,
         <Section>
           <Heading style={h1}>{subject || 'A note for you'}</Heading>
           <Text style={p}>{renderBody(body || '', rsvpUrl)}</Text>
+          {joinUrl ? <Section style={{ textAlign: 'center', margin: '24px 0 10px' }}><Button href={joinUrl} style={btn}>Join the call</Button></Section> : null}
+          {meetingId ? <Text style={detailLine}><strong>Meeting ID:</strong> {meetingId}</Text> : null}
+          {meetingPasscode ? <Text style={detailLine}><strong>Passcode:</strong> {meetingPasscode}</Text> : null}
           {ctaUrl ? (
             <Section style={{ textAlign: 'center', margin: '24px 0' }}>
               <Button href={ctaUrl} style={btn}>{ctaLabel || 'Open'}</Button>
@@ -73,6 +79,7 @@ const link = { color: '#4b1e2b', textDecoration: 'underline' }
 const hostBox = { backgroundColor: '#f8f6f2', borderRadius: '10px', padding: '12px 16px', margin: '16px 0 0' }
 const hostLabel = { fontSize: '12px', color: '#888', margin: '0 0 4px', textTransform: 'uppercase' as const, letterSpacing: '0.04em' }
 const hostLine = { fontSize: '14px', color: '#222', margin: '2px 0' }
+const detailLine = { fontSize: '14px', color: '#222', margin: '2px 0', textAlign: 'center' as const }
 const foot = { fontSize: '12px', color: '#888' }
 const btn = { backgroundColor: '#4b1e2b', color: '#fff', padding: '12px 24px', borderRadius: '999px', textDecoration: 'none', fontSize: '14px' }
 
