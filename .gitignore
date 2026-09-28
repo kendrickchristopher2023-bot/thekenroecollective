@@ -34,3 +34,8 @@ dist-ssr
 # Playwright
 playwright-report/
 test-results/
+
+# Local environment files (keep .env.example)
+.env
+.env.*
+!.env.example
