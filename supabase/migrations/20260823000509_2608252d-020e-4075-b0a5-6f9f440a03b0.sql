@@ -1,0 +1,2 @@
+REVOKE EXECUTE ON FUNCTION public.check_event_photo_rate_limit(text, integer, integer) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.check_event_photo_rate_limit(text, integer, integer) TO service_role;

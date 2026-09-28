@@ -1,0 +1,4 @@
+insert into public.product_updates (title, emoji, body_html, audience_tier, status, published_at)
+values
+('Messages to guests are sending reliably again', '✉️', '<p>We fixed an issue where some messages to guests were not sending. Everything is flowing normally again, and nothing you had set up needs to be recreated. If you tried to send something recently and it did not arrive, just send it again.</p>', 'all', 'published', now()),
+('Invites: the countdown now follows your event timezone', '⏳', '<p>The countdown on your invite page now shows the correct time no matter what timezone you or your guests are in. It counts down to your event in the venue timezone, and guests in another timezone also see the start time in their own local time.</p>', 'all', 'published', now());
