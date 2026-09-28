@@ -3,7 +3,6 @@ import { localTimeZone, revealInputToUtcIso, utcIsoToLocalInput } from "@/lib/ec
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
-import { EmbeddedCheckout, EmbeddedCheckoutProvider } from "@stripe/react-stripe-js";
 import { EcardMusicPanel } from "@/components/ecard-music-panel";
 import {
   addOrganizerContribution,
@@ -41,7 +40,8 @@ import { RevealCountdown } from "@/components/ecard-countdown";
 import { AddRevealToCalendarButton } from "@/components/add-to-calendar-button";
 import { useLocalDateTime, useLocalMonthDay } from "@/lib/ecards-time";
 
-import { getStripe, getStripeEnvironment } from "@/lib/stripe";
+import { getStripeEnvironment } from "@/lib/stripe";
+import { ClientSecretCheckout } from "@/components/client-secret-checkout";
 import { supabase } from "@/integrations/supabase/client";
 import { confirmDialog } from "@/lib/confirm-dialog";
 import { viewerTimeZone } from "@/lib/datetime";
@@ -102,7 +102,12 @@ function EcardDashboard() {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const [panel, setPanel] = useState<"none" | "mine" | "edit" | "preview" | "pay">("none");
+  const [panel, setPanel] = useState<"none" | "mine" | "edit" | "preview">("none");
+  /**
+   * Checkout has its own toggle so opening it never closes (and throws away)
+   * a message the organizer is still writing in the "mine" panel.
+   */
+  const [payOpen, setPayOpen] = useState(false);
   const mineRef = useRef<HTMLDivElement | null>(null);
   /** Which message the organizer is editing right now, if any. */
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -587,7 +592,8 @@ function EcardDashboard() {
               {!card.is_paid && (
                 <button
                   type="button"
-                  onClick={() => setPanel(panel === "pay" ? "none" : "pay")}
+                  onClick={() => setPayOpen((o) => !o)}
+                  aria-expanded={payOpen}
                   className="inline-flex min-h-11 items-center rounded-full bg-velvet px-5 py-2.5 text-sm font-medium text-paper"
                 >
                   Pay {ECARD_SEND_PRICE_LABEL} to send
@@ -617,26 +623,19 @@ function EcardDashboard() {
             </div>
           </>
         )}
-        {panel === "pay" && !card.is_paid && (
+        {payOpen && !card.is_paid && (
           <div className="mt-4 rounded-2xl border border-ink/10 p-3">
-            <EmbeddedCheckoutProvider
-              stripe={getStripe()}
-              options={{
-                fetchClientSecret: async () => {
-                  const res = await createEcardCheckout({
-                    data: {
-                      ecardId: id,
-                      returnUrl: `${origin}/ecards/${id}?ecard_session={CHECKOUT_SESSION_ID}`,
-                      environment: getStripeEnvironment(),
-                    },
-                  });
-                  if ("error" in res) throw new Error(res.error);
-                  return res.clientSecret;
-                },
-              }}
-            >
-              <EmbeddedCheckout />
-            </EmbeddedCheckoutProvider>
+            <ClientSecretCheckout
+              loadClientSecret={() =>
+                createEcardCheckout({
+                  data: {
+                    ecardId: id,
+                    returnUrl: `${origin}/ecards/${id}?ecard_session={CHECKOUT_SESSION_ID}`,
+                    environment: getStripeEnvironment(),
+                  },
+                })
+              }
+            />
           </div>
         )}
       </section>

@@ -2,6 +2,7 @@ import { toUserMessage } from "@/lib/user-error";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { searchGiphy, type GiphyResult } from "@/lib/giphy.functions";
+import { giphyUrlFromLink } from "@/lib/giphy-link";
 
 export function GiphyPicker({
   value,
@@ -13,6 +14,25 @@ export function GiphyPicker({
   const search = useServerFn(searchGiphy);
   const [query, setQuery] = useState("thank you");
   const [submitted, setSubmitted] = useState("thank you");
+  // Bumped on every Search so the same words can be searched again after a
+  // failure; before, re-submitting an unchanged query did nothing.
+  const [nonce, setNonce] = useState(0);
+  const [pasted, setPasted] = useState("");
+  const [pasteErr, setPasteErr] = useState<string | null>(null);
+  const runSearch = () => {
+    setSubmitted(query);
+    setNonce((n) => n + 1);
+  };
+  const applyPasted = () => {
+    const url = giphyUrlFromLink(pasted);
+    if (!url) {
+      setPasteErr("That doesn't look like a GIPHY link. Copy the link from a GIF on giphy.com.");
+      return;
+    }
+    setPasteErr(null);
+    setPasted("");
+    onChange(url);
+  };
   const [results, setResults] = useState<GiphyResult[]>([]);
   const [offset, setOffset] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -33,7 +53,7 @@ export function GiphyPicker({
     return () => {
       alive = false;
     };
-  }, [submitted, search]);
+  }, [submitted, nonce, search]);
 
   const loadMore = async () => {
     setLoading(true);
@@ -57,7 +77,7 @@ export function GiphyPicker({
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               e.preventDefault();
-              setSubmitted(query);
+              runSearch();
             }
           }}
           placeholder="Search GIPHY (e.g. thank you, confetti, hearts)"
@@ -65,7 +85,7 @@ export function GiphyPicker({
         />
         <button
           type="button"
-          onClick={() => setSubmitted(query)}
+          onClick={runSearch}
           className="rounded-md bg-velvet px-3 py-2 text-xs font-medium text-white"
         >
           Search
@@ -81,6 +101,9 @@ export function GiphyPicker({
         )}
       </div>
       {err && <p className="mt-2 text-xs text-destructive">{err}</p>}
+      {value && !results.some((g) => g.url === value) && (
+        <img src={value} alt="Chosen GIF" className="mt-2 h-24 rounded-lg object-cover" />
+      )}
       <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
         {results.map((g) => (
           <button
@@ -92,7 +115,12 @@ export function GiphyPicker({
             }`}
             title={g.title}
           >
-            <img src={g.preview} alt={g.title} loading="lazy" className="h-24 w-full object-cover" />
+            <img
+              src={g.preview}
+              alt={g.title}
+              loading="lazy"
+              className="h-24 w-full object-cover"
+            />
             {value === g.url && (
               <span className="absolute right-1 top-1 rounded-full bg-velvet px-1.5 text-[9px] font-medium text-white">
                 ✓
@@ -117,6 +145,30 @@ export function GiphyPicker({
           <p className="text-[11px] text-muted-foreground">Loading…</p>
         )}
       </div>
+      <div className="mt-2 flex gap-2">
+        <input
+          value={pasted}
+          onChange={(e) => setPasted(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              applyPasted();
+            }
+          }}
+          placeholder="Or paste a GIPHY link"
+          aria-label="Paste a GIPHY link"
+          className="flex-1 rounded-md border border-ink/15 bg-paper px-3 py-2 text-sm !text-ink placeholder:text-ink/50 focus:outline-none"
+        />
+        <button
+          type="button"
+          onClick={applyPasted}
+          disabled={!pasted.trim()}
+          className="rounded-md bg-secondary px-3 py-2 text-xs text-muted-foreground hover:bg-secondary/70 disabled:opacity-50"
+        >
+          Use link
+        </button>
+      </div>
+      {pasteErr && <p className="mt-1 text-xs text-destructive">{pasteErr}</p>}
     </div>
   );
 }

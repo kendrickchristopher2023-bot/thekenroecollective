@@ -27,12 +27,43 @@ export type GiphyResult = {
   still: string;
 };
 
+/**
+ * Shown when the GIPHY key is missing, expired or rejected (401/403). The
+ * owner fixes it by updating the GIPHY_API_KEY secret; until then people can
+ * still paste a GIPHY link into the picker.
+ */
+const GIPHY_UNAVAILABLE =
+  "GIF search is not available right now. You can still paste a GIPHY link below.";
+
 async function callGiphy(path: string, params: Record<string, string>): Promise<GiphyResult[]> {
-  const key = process.env.GIPHY_API_KEY;
-  if (!key) throw new Error("GIPHY_API_KEY not configured");
+  const key = process.env.GIPHY_API_KEY?.trim();
+  if (!key) {
+    console.error("[giphy] GIPHY_API_KEY secret is not set");
+    throw new Error(GIPHY_UNAVAILABLE);
+  }
   const qs = new URLSearchParams({ api_key: key, rating: "pg-13", ...params });
-  const res = await fetch(`https://api.giphy.com/v1/gifs/${path}?${qs.toString()}`);
-  if (!res.ok) throw new Error(`Giphy ${res.status}`);
+  let res: Response;
+  try {
+    res = await fetch(`https://api.giphy.com/v1/gifs/${path}?${qs.toString()}`, {
+      signal: AbortSignal.timeout(10000),
+    });
+  } catch (error) {
+    console.error("[giphy] request failed", error);
+    throw new Error("GIF search did not respond. Please try again in a moment.");
+  }
+  if (!res.ok) {
+    // Logged in full for the owner; the sentence below is what people see.
+    console.error(
+      `[giphy] ${path} returned ${res.status}`,
+      (await res.text().catch(() => "")).slice(0, 300),
+    );
+    if (res.status === 429) {
+      throw new Error(
+        "GIF search is busy right now. Please try again in a few minutes, or paste a GIPHY link.",
+      );
+    }
+    throw new Error(GIPHY_UNAVAILABLE);
+  }
   const json = (await res.json()) as { data: GiphyItem[] };
   return (json.data ?? []).map((g) => ({
     id: g.id,
@@ -40,13 +71,9 @@ async function callGiphy(path: string, params: Record<string, string>): Promise<
     preview: g.images.fixed_height_small?.url ?? g.images.fixed_height?.url ?? "",
     url: g.images.downsized_medium?.url ?? g.images.original?.url ?? "",
     still:
-      g.images.original_still?.url ??
-      g.images.downsized_still?.url ??
-      g.images.original?.url ??
-      "",
+      g.images.original_still?.url ?? g.images.downsized_still?.url ?? g.images.original?.url ?? "",
   }));
 }
-
 
 export const searchGiphy = createServerFn({ method: "GET" })
   .inputValidator((data: { query: string; offset?: number; limit?: number }) => ({

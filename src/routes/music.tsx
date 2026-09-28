@@ -9,13 +9,13 @@
 import { toUserMessage } from "@/lib/user-error";
 import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { EmbeddedCheckout, EmbeddedCheckoutProvider } from "@stripe/react-stripe-js";
+import { ClientSecretCheckout } from "@/components/client-secret-checkout";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { SoundLengthPanel } from "@/components/sound-length-panel";
 import { Download, Library, Loader2, Music4, Play, ShieldAlert, Sparkles, Trash2, Wand2 } from "lucide-react";
 import { useAuthReady } from "@/hooks/use-auth-ready";
-import { getStripe, getStripeEnvironment } from "@/lib/stripe";
+import { getStripeEnvironment } from "@/lib/stripe";
 import {
   studioAccess,
   studioCompose,
@@ -1394,26 +1394,19 @@ function StudioComposer({ access }: { access: AccessInfo }) {
           </div>
           {refundOk ? (
             <div className="mt-3">
-              <EmbeddedCheckoutProvider
-                stripe={getStripe()}
-                options={{
-                  fetchClientSecret: async () => {
-                    const res = (await startPiecePurchase({
-                      data: {
-                        seconds: buySeconds,
-                        kind: isPoem ? "poem" : "song",
-                        title: title.trim() || null,
-                        returnUrl: `${window.location.origin}/music?music_session={CHECKOUT_SESSION_ID}`,
-                        environment: getStripeEnvironment(),
-                      },
-                    } as never)) as { clientSecret: string } | { error: string };
-                    if ("error" in res) throw new Error(res.error);
-                    return res.clientSecret;
-                  },
-                }}
-              >
-                <EmbeddedCheckout />
-              </EmbeddedCheckoutProvider>
+              <ClientSecretCheckout
+                loadClientSecret={async () =>
+                  (await startPiecePurchase({
+                    data: {
+                      seconds: buySeconds,
+                      kind: isPoem ? "poem" : "song",
+                      title: title.trim() || null,
+                      returnUrl: `${window.location.origin}/music?music_session={CHECKOUT_SESSION_ID}`,
+                      environment: getStripeEnvironment(),
+                    },
+                  } as never)) as { clientSecret: string } | { error: string }
+                }
+              />
             </div>
           ) : (
             <p className="mt-3 text-xs text-ink/45">
