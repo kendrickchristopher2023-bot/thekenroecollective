@@ -642,8 +642,6 @@ function EcardDashboard() {
 
       <EcardMusicPanel
         ecardId={id}
-        musicPieceId={(card as { music_piece_id?: string | null }).music_piece_id ?? null}
-        musicHeardAt={(card as { music_heard_at?: string | null }).music_heard_at ?? null}
         onChanged={() => void refetch()}
       />
 

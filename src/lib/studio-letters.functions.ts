@@ -86,11 +86,9 @@ const composeShape = letterShape.extend({
 type RoleClient = { rpc: (fn: string, args: Record<string, unknown>) => PromiseLike<{ data: unknown }> };
 
 async function assertAccess(supabase: RoleClient, userId: string): Promise<{ owner: boolean }> {
-  const [{ data: isOwner }, { data: isSuper }] = await Promise.all([
-    supabase.rpc("has_role", { _user_id: userId, _role: "owner" }),
-    supabase.rpc("has_role", { _user_id: userId, _role: "super_admin" }),
-  ]);
-  if (isOwner || isSuper) return { owner: true };
+  // Owners are Chris and Adrian: the `owner` role only.
+  const { data: isOwner } = await supabase.rpc("has_role", { _user_id: userId, _role: "owner" });
+  if (isOwner) return { owner: true };
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data } = await supabaseAdmin
     .from("site_settings")
