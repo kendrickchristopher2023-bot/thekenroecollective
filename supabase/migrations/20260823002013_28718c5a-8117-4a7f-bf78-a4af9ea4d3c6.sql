@@ -1,0 +1,2 @@
+DELETE FROM public.event_photos WHERE id IN ('a1163e67-03d4-4092-be6a-88c95a14bb6c','3bad6bd5-448f-4fbd-862a-90943415e5d6','c4fef0e6-3206-47e3-8d1f-c977b84707c4');
+DELETE FROM public.event_addons WHERE event_id = '4850qixo' AND addon_key = 'photo_wall';

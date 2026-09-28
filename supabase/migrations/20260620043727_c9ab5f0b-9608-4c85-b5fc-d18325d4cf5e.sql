@@ -1,0 +1,1 @@
+UPDATE public.pricing_tiers SET price_monthly = 32, price_yearly = 307, updated_at = now() WHERE id = 'studio_collective';

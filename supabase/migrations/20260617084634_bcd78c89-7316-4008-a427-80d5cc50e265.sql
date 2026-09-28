@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "public read active codes" ON public.discount_codes;

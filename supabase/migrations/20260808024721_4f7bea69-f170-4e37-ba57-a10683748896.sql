@@ -1,0 +1,1 @@
+UPDATE public.ventures SET accent = 'walnut' WHERE href = '/ecards';
