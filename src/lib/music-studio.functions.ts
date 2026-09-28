@@ -87,12 +87,13 @@ type RoleClient = {
   rpc: (fn: string, args: Record<string, unknown>) => PromiseLike<{ data: unknown }>;
 };
 
+/**
+ * Owners are Chris and Adrian: the `owner` role only. They compose free and
+ * skip payment; super_admin alone does not count.
+ */
 async function isOwnerRole(supabase: RoleClient, userId: string): Promise<boolean> {
-  const [{ data: isOwner }, { data: isSuper }] = await Promise.all([
-    supabase.rpc("has_role", { _user_id: userId, _role: "owner" }),
-    supabase.rpc("has_role", { _user_id: userId, _role: "super_admin" }),
-  ]);
-  return !!isOwner || !!isSuper;
+  const { data: isOwner } = await supabase.rpc("has_role", { _user_id: userId, _role: "owner" });
+  return !!isOwner;
 }
 
 /** Is the studio open to paying customers yet? */
@@ -1570,36 +1571,6 @@ export const publishPieceForInvite = createServerFn({ method: "POST" })
     const { data: pub } = supabaseAdmin.storage.from("atelier-shared").getPublicUrl(path);
     if (!pub?.publicUrl) throw new Error("That song could not be prepared for the invitation.");
     return { url: `${pub.publicUrl}?v=${Date.now()}`, title: piece.title };
-  });
-
-/** Attach a piece to one of my Group eCards, or clear it. */
-export const attachPieceToEcard = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((i: unknown) =>
-    parseInput(nullSafe(z
-      .object({
-        ecardId: z.string().uuid(),
-        // nullSafe drops nulls, so "remove music" arrives as absent: default to null.
-        pieceId: z.string().uuid().nullable().optional().default(null),
-      })), i, "input"),
-  )
-  .handler(async ({ data, context }) => {
-    if (data.pieceId) {
-      const { data: piece } = await context.supabase
-        .from("sound_pieces")
-        .select("id")
-        .eq("id", data.pieceId)
-        .eq("user_id", context.userId)
-        .maybeSingle();
-      if (!piece) throw new Error("That piece can't be found.");
-    }
-    const { error } = await context.supabase
-      .from("ecards")
-      .update({ music_piece_id: data.pieceId })
-      .eq("id", data.ecardId)
-      .eq("organizer_user_id", context.userId);
-    if (error) throw new Error("Couldn't attach the music to that card.");
-    return { ok: true as const };
   });
 
 /**
