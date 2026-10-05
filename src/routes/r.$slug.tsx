@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { curateEcardMontage, getEcardReveal, getPublicEcard } from "@/lib/ecards.functions";
-import { getEcardMusic, markEcardMusicHeard } from "@/lib/music-studio.functions";
+import { getEcardPieces, markEcardPieceHeard } from "@/lib/ecard-pieces.functions";
+import { EcardPiecesPlayer, type RevealPiece } from "@/components/ecard-pieces-player";
 import { useQuery } from "@tanstack/react-query";
 import {
   formatCountdown,
@@ -74,34 +75,17 @@ function RevealPage() {
 
   const items = reveal?.contributions ?? [];
 
-  // Music the organizer attached from Kenroe Sound Studio, if any. It starts
-  // with the reveal, never before, and the recipient can always pause it.
+  // Songs, poems and letters the organizer put on the card from Kenroe Sound
+  // Studio, if any. They start with the reveal, never before, and the
+  // recipient can always pause them.
   const music = useQuery({
-    queryKey: ["ecard-music", slug],
-    queryFn: async () =>
-      (await getEcardMusic({ data: { slug } } as never)) as {
-        music: {
-          title: string;
-          kind: string;
-          url: string | null;
-          words: string | null;
-        } | null;
-      },
+    queryKey: ["ecard-pieces-reveal", slug],
+    queryFn: async () => (await getEcardPieces({ data: { slug } })) as { pieces: RevealPiece[] },
   });
-  const musicUrl = music.data?.music?.url ?? null;
-  const musicKind = music.data?.music?.kind ?? null;
-  // A song sits underneath the card and repeats. A letter or a poem is
-  // listened to, so it plays through once and then stops.
-  const musicLoops = musicKind === "song";
-  const musicWords = music.data?.music?.words?.trim() || null;
-  const [showWords, setShowWords] = useState(false);
-  const heardRef = useRef(false);
-  const markHeard = () => {
-    if (heardRef.current) return;
-    heardRef.current = true;
-    void markEcardMusicHeard({ data: { slug } } as never).catch(() => {});
+  const musicPieces = music.data?.pieces ?? [];
+  const markHeard = (pieceId: string) => {
+    void markEcardPieceHeard({ data: { slug, pieceId } }).catch(() => {});
   };
-
 
   useEffect(() => {
     if (!started || mode !== "cards" || keepsake || items.length === 0) return;
@@ -141,46 +125,12 @@ function RevealPage() {
 
   return (
     <div className="venture-ecards min-h-dvh px-4 py-10" style={{ background: theme.bg }}>
-      {started && musicUrl ? (
-        <div className="mx-auto mb-4 w-full max-w-md">
-          <p className="mb-1 text-sm" style={{ color: theme.ink, opacity: 0.75 }}>
-            {musicKind === "letter"
-              ? "A letter for you, read aloud"
-              : musicKind === "poem"
-                ? "A poem for you, read aloud"
-                : "A song for you"}
-            {music.data?.music?.title ? `: ${music.data.music.title}` : ""}
-          </p>
-          <audio
-            src={musicUrl}
-            autoPlay
-            controls
-            loop={musicLoops}
-            onPlay={markHeard}
-            className="w-full"
-            aria-label={`Music for this card: ${music.data?.music?.title ?? "attached piece"}`}
-          />
-          {musicWords ? (
-            <>
-              <button
-                type="button"
-                onClick={() => setShowWords((v) => !v)}
-                className="mt-2 text-sm underline underline-offset-4"
-                style={{ color: theme.ink, opacity: 0.75 }}
-              >
-                {showWords ? "Hide the words" : "Read the words instead"}
-              </button>
-              {showWords ? (
-                <p
-                  className="mt-2 whitespace-pre-line rounded-2xl p-4 text-base leading-relaxed"
-                  style={{ background: theme.surface, color: theme.ink }}
-                >
-                  {musicWords}
-                </p>
-              ) : null}
-            </>
-          ) : null}
-        </div>
+      {started && musicPieces.length ? (
+        <EcardPiecesPlayer
+          pieces={musicPieces}
+          tone={{ ink: theme.ink, surface: theme.surface }}
+          onHeard={markHeard}
+        />
       ) : null}
       {started && <ConfettiBurst colors={[theme.accent, theme.ink, "#D4B483", "#6B4227"]} />}
       {!started ? (

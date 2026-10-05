@@ -611,7 +611,9 @@ export const createEcardCheckout = createServerFn({ method: "POST" })
       const lookupKeys = musicTier
         ? [ECARD_SEND_PRICE_ID, musicTier.priceKey]
         : [ECARD_SEND_PRICE_ID];
-      const prices = await stripe.prices.list({ lookup_keys: lookupKeys });
+      // Active only: lookup keys are unique among active prices, and an archived
+      // price with the same key would make Stripe reject the whole session.
+      const prices = await stripe.prices.list({ lookup_keys: lookupKeys, active: true });
       const sendPrice = prices.data.find((p) => p.lookup_key === ECARD_SEND_PRICE_ID);
       if (!sendPrice) return { error: "Card sending is not available right now." };
       const musicPrice = musicTier
